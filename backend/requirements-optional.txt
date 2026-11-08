@@ -1,0 +1,23 @@
+# AI MUSIC CLIP STUDIO — extras opcionales (NO se instalan en la Fase 0)
+#
+# El motor base funciona sin nada de esto: usa librosa para beats y no transcribe
+# letras automáticamente. La app detecta en tiempo de ejecución qué extras están
+# presentes y los usa si existen (ver /api/system/capabilities).
+#
+# Instalación, cuando se decida (varios GB en disco):
+#   backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-optional.txt
+
+# Beats y downbeats de alta calidad (CPJKU/beat_this: código y pesos MIT).
+# Requiere torch de CPU. El modelo grande son ~78 MB y el pequeño ~8 MB.
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install beat-this einops soxr rotary-embedding-torch
+
+# Letras automáticas por frase (Whisper en CTranslate2, sin torch).
+# faster-whisper==1.2.1
+# ctranslate2==4.8.5
+# av==19.0.2
+
+# Letras por palabra (karaoke fino): separación de voz + alineación forzada.
+# Pesado: arrastra torch y modelos de wav2vec2.
+# demucs==4.1.0
+# whisperx==3.8.6

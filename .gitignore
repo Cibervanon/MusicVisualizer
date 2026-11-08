@@ -1,0 +1,29 @@
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.tsbuildinfo
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Datos locales y temporales
+projects/
+temp/
+logs/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Herramientas locales
+.freebuff/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store

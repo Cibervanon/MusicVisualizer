@@ -1,0 +1,31 @@
+# AI MUSIC CLIP STUDIO — dependencias base (instalador ligero)
+# Todas verificadas con wheel cp312/win_amd64 mediante:
+#   py -3.12 -m pip download --no-deps --only-binary=:all: <paquete>
+# Python objetivo: 3.12
+
+# --- Servidor web ---
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+pydantic==2.14.2
+orjson==3.13.0
+aiofiles==25.1.0
+
+# --- Numérico / señal ---
+numpy==2.5.4
+scipy==1.18.1
+numba==0.68.1
+soundfile==0.14.0
+
+# --- Análisis musical ---
+librosa==1.0.0
+
+# --- Análisis visual ---
+# contrib incluye cv2.saliency (usado por SmartCropEngine).
+# La variante "headless" evita arrastrar las GUI de Qt/GTK.
+opencv-contrib-python-headless==5.0.0.93
+scenedetect==0.7.2
+pillow==13.0.0
+
+# --- Importación por URL (material autorizado; ver docs/FASE-1-ARQUITECTURA.md §12) ---
+yt-dlp==2026.10.26
