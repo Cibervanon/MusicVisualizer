@@ -8,24 +8,29 @@ interface TimelineProps {
   duration: number;
   masterDuration: number;
   playhead: number;
-  selectedIndex: number | null;
+  selectedId: string | null;
   accent: string;
-  onSelect: (index: number) => void;
+  onSelect: (id: string) => void;
   onSeek: (time: number) => void;
   onBeginInteraction: () => void;
   onChange: (segments: Segment[]) => void;
 }
 
-type DragState =
-  | { type: "move"; index: number; startX: number; sourceStart: number }
-  | { type: "resize"; index: number; startX: number; duration: number; sourceDuration: number };
+type DragState = {
+  type: "move" | "resize";
+  id: string;
+  startX: number;
+  sourceStart: number;
+  duration: number;
+  sourceDuration: number;
+};
 
 export function Timeline({
   segments,
   duration,
   masterDuration,
   playhead,
-  selectedIndex,
+  selectedId,
   accent,
   onSelect,
   onSeek,
@@ -53,25 +58,21 @@ export function Timeline({
 
   const startDrag = (
     event: React.PointerEvent,
-    index: number,
+    segment: Segment,
     type: "move" | "resize",
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    onSelect(index);
+    onSelect(segment.id);
     onBeginInteraction();
-    const segment = segments[index];
-    if (!segment) return;
-    dragRef.current =
-      type === "move"
-        ? { type, index, startX: event.clientX, sourceStart: segment.source_start }
-        : {
-            type,
-            index,
-            startX: event.clientX,
-            duration: segment.duration,
-            sourceDuration: segment.source_duration,
-          };
+    dragRef.current = {
+      type,
+      id: segment.id,
+      startX: event.clientX,
+      sourceStart: segment.source_start,
+      duration: segment.duration,
+      sourceDuration: segment.source_duration,
+    };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   };
 
@@ -80,41 +81,45 @@ export function Timeline({
     if (!drag) return;
     const delta = (event.clientX - drag.startX) / pxPerSec;
     const current = segmentsRef.current;
-    const segment = current[drag.index];
+    const index = current.findIndex((item) => item.id === drag.id);
+    const segment = current[index];
     if (!segment) return;
 
     if (drag.type === "move") {
-      const maxStart = Math.max(0, safeMaster - segment.source_duration);
+      const maxStart = Math.max(0, safeMaster - drag.sourceDuration);
       const sourceStart = clamp(drag.sourceStart + delta, 0, maxStart);
-      const next = current.map((item, index) =>
-        index === drag.index
-          ? {
-              ...item,
-              source_start: round(sourceStart),
-              source_end: round(sourceStart + item.source_duration),
-            }
-          : item,
+      onChange(
+        current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                source_start: round(sourceStart),
+                source_end: round(sourceStart + item.source_duration),
+              }
+            : item,
+        ),
       );
-      onChange(next);
     } else {
-      const maxDuration = Math.max(0.2, safeMaster - segment.source_start);
-      const newDuration = clamp(drag.duration + delta, 0.2, maxDuration);
+      const extra = Math.max(0, drag.sourceDuration - drag.duration);
+      const maxDuration = Math.max(0.12, safeMaster - segment.source_start - extra);
+      const newDuration = clamp(drag.duration + delta, 0.12, maxDuration);
       const sourceDuration = clamp(
-        drag.sourceDuration + delta,
+        newDuration + extra,
         newDuration,
         Math.max(newDuration, safeMaster - segment.source_start),
       );
-      const next = current.map((item, index) =>
-        index === drag.index
-          ? {
-              ...item,
-              duration: round(newDuration),
-              source_duration: round(sourceDuration),
-              source_end: round(item.source_start + sourceDuration),
-            }
-          : item,
+      onChange(
+        current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+                ...item,
+                duration: round(newDuration),
+                source_duration: round(sourceDuration),
+                source_end: round(item.source_start + sourceDuration),
+              }
+            : item,
+        ),
       );
-      onChange(next);
     }
   };
 
@@ -174,12 +179,16 @@ export function Timeline({
         {segments.map((segment, index) => {
           const left = (segment.timeline_start / duration) * 100;
           const blockWidth = (segment.duration / duration) * 100;
-          const selected = selectedIndex === index;
+          const selected = selectedId === segment.id;
           return (
             <div
-              key={`${segment.scene_id}-${index}`}
+              key={segment.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Segmento ${index + 1}, ${segment.duration.toFixed(2)} segundos`}
+              aria-pressed={selected}
               className={cn(
-                "group absolute top-1.5 h-[64px] overflow-hidden rounded-md border text-left transition-colors",
+                "group absolute top-1.5 h-[64px] overflow-hidden rounded-md border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70",
                 selected
                   ? "z-10 border-lime/70"
                   : "border-white/15 hover:border-white/35",
@@ -192,10 +201,16 @@ export function Timeline({
                   : "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
                 boxShadow: selected ? `0 0 0 1px ${accent}55` : undefined,
               }}
-              onPointerDown={(event) => startDrag(event, index, "move")}
+              onPointerDown={(event) => startDrag(event, segment, "move")}
               onPointerMove={onPointerMove}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelect(segment.id);
+                }
+              }}
             >
               <div className="pointer-events-none px-1.5 py-1">
                 <p className="truncate text-[9px] font-semibold uppercase tracking-wide text-white/60">
@@ -210,7 +225,7 @@ export function Timeline({
               </div>
               <div
                 className="absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-white/0 transition group-hover:bg-white/15"
-                onPointerDown={(event) => startDrag(event, index, "resize")}
+                onPointerDown={(event) => startDrag(event, segment, "resize")}
                 onPointerMove={onPointerMove}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}

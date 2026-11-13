@@ -29,7 +29,18 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api, ApiError, downloadUrl, mediaUrl, waitForJob } from "../lib/api";
-import { moveSegment, reflowSegments, splitSegmentAt } from "../lib/edit";
+import {
+  docDuration,
+  duplicateSegment,
+  ensureSegmentIds,
+  moveSegment,
+  reflowSegments,
+  removeSegment,
+  segmentIndexById,
+  sourceToTimeline,
+  splitSegmentAt,
+  timelineToSource,
+} from "../lib/edit";
 import type {
   EDL,
   Job,
@@ -61,7 +72,7 @@ interface Doc {
 
 function docFromEdit(edit: EDL): Doc {
   return {
-    segments: edit.segments.map((segment) => ({ ...segment })),
+    segments: ensureSegmentIds(edit.segments || []),
     grade: { ...edit.grade },
     effects: { ...edit.effects },
     volume: edit.volume ?? 1,
@@ -87,7 +98,7 @@ export function EditorScreen() {
   const [future, setFuture] = useState<Doc[]>([]);
   const [baseline, setBaseline] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("timeline");
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -104,6 +115,10 @@ export function EditorScreen() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const docRef = useRef<Doc | null>(null);
   docRef.current = doc;
+  // Cada mutación local incrementa esta secuencia. Sirve para no aplicar una
+  // respuesta de guardado antigua encima de cambios más recientes.
+  const seqRef = useRef(0);
+  const loadRef = useRef(0);
 
   // choose an edit
   useEffect(() => {
@@ -118,25 +133,34 @@ export function EditorScreen() {
 
   useEffect(() => {
     if (!project || !editId) return;
-    let cancelled = false;
+    const requestId = ++loadRef.current;
     setLoading(true);
     api
       .getEdit(project.id, editId)
       .then(({ edit: loaded }) => {
-        if (cancelled) return;
-        const initial = docFromEdit(loaded);
-        setEdit(loaded);
+        if (requestId !== loadRef.current) return;
+        const normalized: EDL = { ...loaded, segments: ensureSegmentIds(loaded.segments || []) };
+        const initial = docFromEdit(normalized);
+        setEdit(normalized);
         setDoc(initial);
         setBaseline(JSON.stringify(initial));
         setPast([]);
         setFuture([]);
-        setSelectedIndex(0);
+        setSelectedId(normalized.segments[0]?.id ?? null);
         setPlayhead(0);
+        setPlaying(false);
+        setRendered(null);
+        setVideoSrc("");
+        setRenderJob(null);
+        setRenderingType(null);
+        seqRef.current += 1;
       })
       .catch((error) => notify((error as ApiError).message, "error"))
-      .finally(() => !cancelled && setLoading(false));
+      .finally(() => {
+        if (requestId === loadRef.current) setLoading(false);
+      });
     return () => {
-      cancelled = true;
+      if (requestId === loadRef.current) loadRef.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, editId]);
@@ -151,14 +175,19 @@ export function EditorScreen() {
 
   // existing render for this edit
   useEffect(() => {
-    if (!project || !edit) return;
-    const preview = project.renders.find(
-      (render) => render.edit_id === edit.id && render.type === "preview",
-    );
-    const final = project.renders.find(
-      (render) => render.edit_id === edit.id && render.type === "final",
-    );
-    setRendered((current) => current && current.edit_id === edit.id ? current : preview || final || null);
+    if (!project || !edit) {
+      setRendered(null);
+      return;
+    }
+    const forEdit = project.renders.filter((render) => render.edit_id === edit.id);
+    const preview = forEdit.find((render) => render.type === "preview");
+    const final = forEdit.find((render) => render.type === "final");
+    setRendered((current) => {
+      if (current && current.edit_id === edit.id && forEdit.some((r) => r.id === current.id)) {
+        return current;
+      }
+      return preview || final || null;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit?.id, project?.renders]);
 
@@ -166,26 +195,60 @@ export function EditorScreen() {
   useEffect(() => {
     if (!project || !edit) return;
     const path = rendered?.path || edit.master;
-    setVideoSrc(mediaUrl(project.id, path));
+    setVideoSrc(path ? mediaUrl(project.id, path) : "");
   }, [project?.id, edit?.master, rendered?.path]);
 
-  const masterDuration = Number(project?.analysis_summary.video?.duration || edit?.duration || 30);
-  const duration = edit?.duration || 30;
+  // El límite para alargar el montaje es el fragmento de audio completo, no la
+  // duración actual del EDL: tras acortar y guardar, la duración del EDL baja y
+  // usarla como tope impediría volver a crecer hasta el fragmento.
+  const fragmentDuration = Number(project?.fragment?.duration || edit?.duration || 30);
+  const masterDuration = Number(
+    project?.analysis_summary.video?.duration || edit?.duration || 30,
+  );
+  const targetDuration = fragmentDuration;
+  const totalDuration = doc ? docDuration(doc.segments) : targetDuration;
+  const timelineDuration = Math.max(targetDuration, totalDuration, 0.2);
   const accent = edit?.style === "flash" ? "#FFFFFF" : "#D6FF3D";
+  const usingRender = Boolean(rendered);
+  const renderStale = Boolean(
+    rendered && edit?.edited_at && rendered.created_at < edit.edited_at,
+  );
 
   const pushHistory = () => {
     const current = docRef.current;
     if (!current) return;
-    setPast((items) => [...items.slice(-39), JSON.parse(JSON.stringify(current)) as Doc]);
+    const snapshot = JSON.parse(JSON.stringify(current)) as Doc;
+    setPast((items) => {
+      const last = items[items.length - 1];
+      // Evita entradas de historial que no cambian nada (focus de sliders, etc.).
+      if (last && JSON.stringify(last) === JSON.stringify(snapshot)) return items;
+      return [...items.slice(-39), snapshot];
+    });
     setFuture([]);
   };
 
-  const updateDoc = (next: Doc) => setDoc(next);
+  const applyDoc = (next: Doc) => {
+    seqRef.current += 1;
+    setDoc(next);
+    if (!next.segments.some((segment) => segment.id === selectedId)) {
+      setSelectedId(next.segments[0]?.id ?? null);
+    }
+  };
+
+  const updateDoc = (next: Doc) => applyDoc(next);
 
   const setSegments = (segments: Segment[]) => {
     const current = docRef.current;
     if (!current) return;
-    updateDoc({ ...current, segments: reflowSegments(segments, duration, masterDuration) });
+    applyDoc({
+      ...current,
+      segments: reflowSegments(
+        segments,
+        targetDuration,
+        masterDuration,
+        Number(edit?.transition?.duration || 0),
+      ),
+    });
   };
 
   const undo = () => {
@@ -193,7 +256,7 @@ export function EditorScreen() {
     const previous = past[past.length - 1];
     setFuture((items) => [JSON.parse(JSON.stringify(doc)) as Doc, ...items]);
     setPast((items) => items.slice(0, -1));
-    setDoc(previous);
+    applyDoc(previous);
   };
 
   const redo = () => {
@@ -201,8 +264,15 @@ export function EditorScreen() {
     const next = future[0];
     setPast((items) => [...items, JSON.parse(JSON.stringify(doc)) as Doc]);
     setFuture((items) => items.slice(1));
-    setDoc(next);
+    applyDoc(next);
   };
+
+  // Mantén la selección coherente si un segmento desaparece (undo, borrado...).
+  useEffect(() => {
+    if (!doc) return;
+    if (selectedId && doc.segments.some((segment) => segment.id === selectedId)) return;
+    setSelectedId(doc.segments[0]?.id ?? null);
+  }, [doc, selectedId]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -229,6 +299,17 @@ export function EditorScreen() {
     [doc, baseline],
   );
 
+  // Aviso honesto si se intenta cerrar con cambios sin guardar.
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -236,25 +317,45 @@ export function EditorScreen() {
     else video.pause();
   };
 
-  const save = async (silent = false): Promise<EDL | null> => {
+  const save = async (
+    silent = false,
+  ): Promise<{ edit: EDL; clean: boolean } | null> => {
     if (!project || !edit || !doc) return null;
+    // Sin cambios no hace falta tocar el EDL: un PATCH innecesario actualizaría
+    // `edited_at` y marcaría como desactualizado el render que vamos a lanzar.
+    if (!dirty) return { edit, clean: true };
+    const seqAtStart = seqRef.current;
+    const snapshot = JSON.parse(JSON.stringify(doc)) as Doc;
     setSaving(true);
     try {
       const { edit: updated } = await api.patchEdit(project.id, edit.id, {
-        segments: doc.segments,
-        grade: doc.grade,
-        effects: doc.effects,
-        volume: doc.volume,
+        segments: snapshot.segments,
+        grade: snapshot.grade,
+        effects: snapshot.effects,
+        volume: snapshot.volume,
       });
       const fresh = docFromEdit(updated);
       setEdit(updated);
-      setDoc(fresh);
-      setBaseline(JSON.stringify(fresh));
-      setPast([]);
-      setFuture([]);
+      const clean = seqRef.current === seqAtStart;
+      if (clean) {
+        // Nadie editó mientras guardábamos: la respuesta es la verdad actual.
+        // El incremento invalida respuestas de guardados solapados.
+        seqRef.current += 1;
+        setDoc(fresh);
+        setBaseline(JSON.stringify(fresh));
+        setPast([]);
+        setFuture([]);
+        if (!fresh.segments.some((segment) => segment.id === selectedId)) {
+          setSelectedId(fresh.segments[0]?.id ?? null);
+        }
+      } else {
+        // Había cambios más nuevos: no los pisamos. El baseline es lo que el
+        // servidor tiene realmente, así que la UI sigue marcando "sin guardar".
+        setBaseline(JSON.stringify(snapshot));
+      }
       await refreshProject();
       if (!silent) notify("Montaje guardado. Ya puedes renderizar.", "success");
-      return updated;
+      return { edit: updated, clean };
     } catch (error) {
       notify((error as ApiError).message, "error");
       return null;
@@ -269,9 +370,16 @@ export function EditorScreen() {
     try {
       const saved = await save(true);
       if (!saved) return;
+      if (!saved.clean) {
+        notify(
+          "Se guardó una versión anterior porque seguiste editando. Guarda los cambios actuales antes de renderizar.",
+          "info",
+        );
+        return;
+      }
       const { job } = await api.render({
         project_id: project.id,
-        edit_id: saved.id,
+        edit_id: saved.edit.id,
         preview,
         quality: project.config.quality,
         encoder: project.config.encoder,
@@ -316,24 +424,42 @@ export function EditorScreen() {
     }
   };
 
-  const selected = doc?.segments[selectedIndex] || null;
+  const segments = doc?.segments || [];
+  const selectedIndex = segmentIndexById(segments, selectedId);
+  const selected = selectedIndex >= 0 ? segments[selectedIndex] : null;
+
+  const seekTo = (time: number) => {
+    const clamped = clamp(time, 0, timelineDuration);
+    setPlayhead(clamped);
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = usingRender ? clamped : timelineToSource(segments, clamped);
+  };
+
+  const selectSegment = (id: string) => {
+    setSelectedId(id);
+    const segment = segments.find((item) => item.id === id);
+    if (segment) seekTo(segment.timeline_start);
+  };
 
   const updateSelected = (patch: Partial<Segment>) => {
     if (!doc || !selected) return;
-    const next = doc.segments.map((segment, index) =>
-      index === selectedIndex ? { ...segment, ...patch } : segment,
+    const next = doc.segments.map((segment) =>
+      segment.id === selected.id ? { ...segment, ...patch } : segment,
     );
     setSegments(next);
   };
 
   const removeSelected = () => {
-    if (!doc || !selected || doc.segments.length <= 1) {
+    if (!doc || !selected) return;
+    if (doc.segments.length <= 1) {
       notify("El montaje debe conservar al menos un segmento.", "info");
       return;
     }
     pushHistory();
-    setSegments(doc.segments.filter((_, index) => index !== selectedIndex));
-    setSelectedIndex((index) => Math.max(0, index - 1));
+    const { segments: next, nextId } = removeSegment(doc.segments, selected.id);
+    setSegments(next);
+    setSelectedId(nextId);
   };
 
   const splitSelected = () => {
@@ -343,23 +469,41 @@ export function EditorScreen() {
       return;
     }
     pushHistory();
-    setSegments(splitSegmentAt(doc.segments, selectedIndex, playhead));
+    const next = splitSegmentAt(
+      doc.segments,
+      selected.id,
+      playhead,
+      Number(edit?.transition?.duration || 0),
+    );
+    if (next.length === doc.segments.length) {
+      notify("No hay metraje suficiente para dividir en ese punto.", "info");
+      return;
+    }
+    setSegments(next);
+    setSelectedId(selected.id);
   };
 
   const duplicateSelected = () => {
     if (!doc || !selected) return;
+    const slack = targetDuration - totalDuration;
+    if (slack < 0.12) {
+      notify("No queda duración libre en el fragmento para duplicar el clip.", "info");
+      return;
+    }
     pushHistory();
-    const copy = { ...selected };
-    const next = [...doc.segments];
-    next.splice(selectedIndex + 1, 0, copy);
+    const { segments: next, id } = duplicateSegment(doc.segments, selected.id, slack);
+    if (!id) {
+      notify("No se pudo duplicar el segmento.", "info");
+      return;
+    }
     setSegments(next);
+    setSelectedId(id);
   };
 
   const moveSelected = (direction: -1 | 1) => {
     if (!doc || !selected) return;
     pushHistory();
-    setSegments(moveSegment(doc.segments, selectedIndex, direction));
-    setSelectedIndex((index) => clamp(index + direction, 0, doc.segments.length - 1));
+    setSegments(moveSegment(doc.segments, selected.id, direction));
   };
 
   const resetEffects = () => {
@@ -399,7 +543,6 @@ export function EditorScreen() {
     );
   }
 
-  const usingRender = Boolean(rendered);
   const renderBusy = renderingType !== null;
   const edits = project.edits;
 
@@ -407,7 +550,7 @@ export function EditorScreen() {
     <div className="space-y-6 animate-rise">
       <SectionHeading
         eyebrow="Paso 05 · Editor"
-        title={`${edit.style_name} · ${formatTime(duration)}`}
+        title={`${edit.style_name} · ${formatTime(totalDuration)}`}
         description="Ajusta cortes, efectos y letras sobre el EDL real. Guarda, previsualiza a media resolución y renderiza el MP4 final."
         action={
           <div className="flex flex-wrap items-center gap-2">
@@ -483,18 +626,33 @@ export function EditorScreen() {
               className="max-h-[46vh] w-full rounded-lg object-contain"
               controls
               playsInline
-              onTimeUpdate={(event) => setPlayhead(event.currentTarget.currentTime)}
+              onTimeUpdate={(event) => {
+                const current = event.currentTarget.currentTime;
+                if (usingRender) {
+                  setPlayhead(clamp(current, 0, timelineDuration));
+                } else {
+                  const mapped = sourceToTimeline(segments, current);
+                  if (mapped !== null) setPlayhead(mapped);
+                }
+              }}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
               onLoadedMetadata={(event) => {
-                event.currentTarget.currentTime = 0;
+                event.currentTarget.currentTime = usingRender
+                  ? clamp(playhead, 0, timelineDuration)
+                  : timelineToSource(segments, playhead);
               }}
             />
             <div className="absolute left-4 top-4 flex flex-wrap gap-1.5">
-              <Badge tone={usingRender ? "success" : "warning"}>
+              <Badge tone={usingRender ? (renderStale ? "warning" : "success") : "warning"}>
                 {usingRender ? (
                   <>
-                    <Check size={10} /> {rendered?.type === "preview" ? "preview real" : "render final"}
+                    <Check size={10} />{" "}
+                    {renderStale
+                      ? "render desactualizado"
+                      : rendered?.type === "preview"
+                        ? "preview real"
+                        : "render final"}
                   </>
                 ) : (
                   <>
@@ -506,7 +664,15 @@ export function EditorScreen() {
             </div>
             {!usingRender && (
               <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white/50 backdrop-blur">
-                Estás viendo el máster normalizado. Renderiza una preview para ver el montaje real.
+                Estás viendo el máster normalizado: el cursor se mapea al metraje de origen.
+                Renderiza una preview para ver el montaje real.
+              </p>
+            )}
+            {usingRender && (renderStale || dirty) && (
+              <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-amber-500/15 px-3 py-1.5 text-[10px] text-amber-100/80 backdrop-blur">
+                {dirty
+                  ? "Hay cambios sin guardar: esta preview no los incluye."
+                  : "Esta preview se generó antes de los últimos cambios guardados."}
               </p>
             )}
           </div>
@@ -524,7 +690,7 @@ export function EditorScreen() {
             </div>
             <div className="flex items-baseline gap-1 font-mono">
               <span className="text-2xl font-semibold text-white">{formatTime(playhead, true)}</span>
-              <span className="text-xs text-white/30">/ {formatTime(duration)}</span>
+              <span className="text-xs text-white/30">/ {formatTime(totalDuration)}</span>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
@@ -534,7 +700,7 @@ export function EditorScreen() {
               <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
                 <p className="text-white/30">Cortes/s</p>
                 <p className="font-mono text-white/80">
-                  {(doc.segments.length / Math.max(0.1, duration)).toFixed(2)}
+                  {(doc.segments.length / Math.max(0.1, totalDuration)).toFixed(2)}
                 </p>
               </div>
               <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
@@ -587,16 +753,13 @@ export function EditorScreen() {
           </div>
           <Timeline
             segments={doc.segments}
-            duration={duration}
+            duration={timelineDuration}
             masterDuration={masterDuration}
             playhead={playhead}
-            selectedIndex={selectedIndex}
+            selectedId={selectedId}
             accent={accent}
-            onSelect={setSelectedIndex}
-            onSeek={(time) => {
-              setPlayhead(time);
-              if (videoRef.current) videoRef.current.currentTime = time;
-            }}
+            onSelect={selectSegment}
+            onSeek={seekTo}
             onBeginInteraction={pushHistory}
             onChange={setSegments}
           />
@@ -672,7 +835,7 @@ export function EditorScreen() {
                       <input
                         type="number"
                         min={0}
-                        max={Math.max(0, masterDuration - selected.duration)}
+                        max={Math.max(0, masterDuration - selected.source_duration)}
                         step={0.05}
                         value={Number(selected.source_start.toFixed(3))}
                         onFocus={pushHistory}
@@ -680,7 +843,7 @@ export function EditorScreen() {
                           const value = clamp(
                             Number(event.target.value),
                             0,
-                            Math.max(0, masterDuration - selected.duration),
+                            Math.max(0, masterDuration - selected.source_duration),
                           );
                           updateSelected({
                             source_start: value,
@@ -695,7 +858,13 @@ export function EditorScreen() {
                       <input
                         type="number"
                         min={0.12}
-                        max={Math.max(0.2, masterDuration - selected.source_start)}
+                        max={Math.max(
+                          0.2,
+                          Math.min(
+                            masterDuration - selected.source_start,
+                            targetDuration - (totalDuration - selected.duration),
+                          ),
+                        )}
                         step={0.05}
                         value={Number(selected.duration.toFixed(3))}
                         onFocus={pushHistory}
@@ -703,7 +872,13 @@ export function EditorScreen() {
                           const value = clamp(
                             Number(event.target.value),
                             0.12,
-                            Math.max(0.2, masterDuration - selected.source_start),
+                            Math.max(
+                              0.12,
+                              Math.min(
+                                masterDuration - selected.source_start,
+                                targetDuration - (totalDuration - selected.duration),
+                              ),
+                            ),
                           );
                           updateSelected({
                             duration: value,
@@ -736,7 +911,8 @@ export function EditorScreen() {
 
                   <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5 text-[10px] leading-relaxed text-white/30">
                     Los cambios se aplican al EDL. Al guardar, el backend revalida que cada segmento
-                    quepa en el máster y que el montaje dure exactamente {formatTime(duration)}.
+                    quepa en el máster. La duración del montaje es la suma de sus segmentos y no
+                    puede superar el fragmento de audio ({formatTime(targetDuration)}).
                   </div>
                 </>
               )}
@@ -756,6 +932,7 @@ export function EditorScreen() {
                     value={Number(doc.grade.contrast ?? 1)}
                     min={0.5}
                     max={1.6}
+                    onFocus={pushHistory}
                     onChange={(value) => {
                       updateDoc({ ...doc, grade: { ...doc.grade, contrast: value } });
                     }}
@@ -765,6 +942,7 @@ export function EditorScreen() {
                     value={Number(doc.grade.saturation ?? 1)}
                     min={0}
                     max={2}
+                    onFocus={pushHistory}
                     onChange={(value) => {
                       updateDoc({ ...doc, grade: { ...doc.grade, saturation: value } });
                     }}
@@ -774,6 +952,7 @@ export function EditorScreen() {
                     value={Number(doc.grade.brightness ?? 0)}
                     min={-0.4}
                     max={0.4}
+                    onFocus={pushHistory}
                     onChange={(value) => {
                       updateDoc({ ...doc, grade: { ...doc.grade, brightness: value } });
                     }}
@@ -783,6 +962,7 @@ export function EditorScreen() {
                     value={doc.volume}
                     min={0}
                     max={2}
+                    onFocus={pushHistory}
                     onChange={(value) => updateDoc({ ...doc, volume: value })}
                     format={(value) => `${Math.round(value * 100)}%`}
                   />
@@ -810,6 +990,7 @@ export function EditorScreen() {
                         value={Number(doc.effects[key as string] ?? 0)}
                         min={Number(min)}
                         max={Number(max)}
+                        onFocus={pushHistory}
                         onChange={(value) => {
                           if (!allowed(key as string)) return;
                           updateDoc({ ...doc, effects: { ...doc.effects, [key as string]: value } });
@@ -830,7 +1011,7 @@ export function EditorScreen() {
             <div className="space-y-4">
               <LyricsEditor
                 projectId={project.id}
-                duration={duration}
+                duration={totalDuration}
                 lines={lyricsLines}
                 style={lyricsStyle}
                 enabled={lyricsEnabled}

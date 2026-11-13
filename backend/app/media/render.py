@@ -107,10 +107,15 @@ def _build_graph(
     for index, segment in enumerate(segments):
         shot = float(segment.get("duration") or 0.0)
         source_duration = float(segment.get("source_duration") or shot)
+        # En un corte, el input debe durar exactamente el plano. `source_duration`
+        # puede ser mayor (margen de crossfade o una edición manual): si se dejaba
+        # entero, concat alargaba el montaje y el audio/vídeo se desincronizaban.
         if transition == "crossfade" and index > 0:
-            source_duration = max(source_duration, shot + transition_duration)
+            trim_duration = max(shot, source_duration)
+        else:
+            trim_duration = max(0.04, shot)
         filters = [
-            f"trim=start=0:end={source_duration:.4f}",
+            f"trim=start=0:end={trim_duration:.4f}",
             "setpts=PTS-STARTPTS",
             f"fps={fps}",
             f"scale={out_width}:{out_height}:flags=lanczos",
@@ -211,6 +216,20 @@ async def _make_thumb(video: Path, thumb: Path, duration: float) -> None:
         pass
 
 
+def render_identity(project_id: str, edit_id: str, preview: bool) -> tuple[str, str]:
+    """ID y nombre de archivo "amigable" (para descargas) de un render.
+
+    Antes el id era `r_<edit_id>` y dos proyectos con el mismo `edit_01_*`
+    colisionaban: `find_render` podía servir/borrar el clip de otro proyecto.
+
+    El nombre de descarga se mantiene legible, pero **en disco** se usa el id
+    (`<render_id>.mp4`): así un render heredado y uno nuevo con el mismo
+    `edit_id` no comparten archivo y borrar uno no deja colgando al otro.
+    """
+    suffix = "_preview" if preview else ""
+    return f"r_{project_id}_{edit_id}{suffix}", f"{edit_id}{suffix}.mp4"
+
+
 async def render_edit(
     project: dict[str, Any],
     edl: dict[str, Any],
@@ -234,9 +253,11 @@ async def render_edit(
     fps = int(edl.get("fps") or 30)
     out_width, out_height = _preview_dims(width, height) if preview else (width, height)
 
-    render_id = f"r_{edl['id']}" + ("_preview" if preview else "")
-    filename = f"{edl['id']}{'_preview' if preview else ''}.mp4"
-    output = layout["renders"] / filename
+    render_id, filename = render_identity(project["id"], edl["id"], preview)
+    # El archivo en disco lleva el id único, no el nombre amigable. Dos renders
+    # del mismo clip (heredado y nuevo) deben poder convivir y borrarse por
+    # separado sin dejar registros apuntando a un archivo inexistente.
+    output = layout["renders"] / f"{render_id}.mp4"
     output.parent.mkdir(parents=True, exist_ok=True)
     thumb = layout["thumbs"] / f"{render_id}.jpg"
 

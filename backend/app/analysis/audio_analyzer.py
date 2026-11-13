@@ -18,7 +18,7 @@ from ..core.ffmpeg import run_ffmpeg
 from ..core.paths import project_layout
 from ..core.util import clamp, read_json, sha1_of, write_json
 
-ANALYSIS_VERSION = "audio-v2"
+ANALYSIS_VERSION = "audio-v3"
 HOP = 512
 SR = 22050
 BANDS = {
@@ -271,14 +271,29 @@ def analyze_audio_file(mono_path: str | Path, expected_duration: float | None = 
         0,
         max(0, len(onset_env) - 1),
     )
-    beat_objects: list[dict[str, Any]] = []
-    for index, (beat_time, frame) in enumerate(zip(beats, beat_frames)):
+    windows: list[tuple[int, int]] = []
+    raw_strengths: list[float] = []
+    for frame in beat_frames:
         lo = max(0, int(frame) - 2)
         hi = min(len(onset_env), int(frame) + 3)
-        strength = float(np.max(onset_env[lo:hi])) if hi > lo else float(onset_env[int(frame)])
-        strength = clamp(_norm(np.array([strength]), 99.0)[0], 0.0, 1.0)
+        windows.append((lo, hi))
+        raw_strengths.append(
+            float(np.max(onset_env[lo:hi])) if hi > lo else float(onset_env[int(frame)])
+        )
+    # Normalizar el vector completo UNA vez. Normalizar cada escalar por separado
+    # devolvía siempre 1.0 y aplastaba la jerarquía de acentos (downbeats falsos).
+    strengths = (
+        _norm(np.asarray(raw_strengths, dtype=np.float64), 99.0)
+        if raw_strengths
+        else np.asarray([], dtype=np.float64)
+    )
+
+    beat_objects: list[dict[str, Any]] = []
+    for index, (beat_time, (lo, hi), strength) in enumerate(
+        zip(beats, windows, strengths)
+    ):
         band_values = {
-            name: round(float(np.mean(values[lo:hi])) if hi > lo else float(values[int(frame)]), 4)
+            name: round(float(np.mean(values[lo:hi])) if hi > lo else float(values[int(lo)]), 4)
             for name, values in band_arrays.items()
         }
         beat_objects.append(
@@ -286,19 +301,26 @@ def analyze_audio_file(mono_path: str | Path, expected_duration: float | None = 
                 "t": round(float(beat_time), 4),
                 "index": index,
                 "is_downbeat": False,
-                "strength": round(strength, 4),
+                "strength": round(float(clamp(strength, 0.0, 1.0)), 4),
                 "bands": band_values,
             }
         )
 
     # Downbeats: fase de compás 4/4 que maximiza la suma de acentos.
+    # La confianza se deriva de cuánto separa la mejor fase de la segunda; con
+    # pocos beats o fases empatadas se marca como incierta.
+    downbeat_confidence = 0.0
     if beat_objects:
-        best_offset = 0
-        best_score = -1.0
-        for offset in range(4):
-            score = sum(b["strength"] for b in beat_objects[offset::4])
-            if score > best_score:
-                best_score, best_offset = score, offset
+        phase_scores = [
+            sum(b["strength"] for b in beat_objects[offset::4]) for offset in range(4)
+        ]
+        best_offset = max(range(4), key=lambda offset: phase_scores[offset])
+        best_score = phase_scores[best_offset]
+        ordered = sorted(phase_scores, reverse=True)
+        second = ordered[1] if len(ordered) > 1 else 0.0
+        separation = (best_score - second) / best_score if best_score > 0 else 0.0
+        support = min(1.0, len(beat_objects) / 8.0)
+        downbeat_confidence = round(clamp(separation * support, 0.0, 1.0), 3)
         for beat in beat_objects[best_offset::4]:
             beat["is_downbeat"] = True
         if best_offset >= len(beat_objects):
@@ -432,7 +454,12 @@ def analyze_audio_file(mono_path: str | Path, expected_duration: float | None = 
     return {
         "schema_version": 1,
         "duration": round(duration, 4),
-        "tempo": {"bpm": bpm, "confidence": round(confidence, 3), "meter": 4},
+        "tempo": {
+            "bpm": bpm,
+            "confidence": round(confidence, 3),
+            "meter": 4,
+            "downbeat_confidence": downbeat_confidence,
+        },
         "beats": beat_objects,
         "onsets": [
             round(float(v), 4)

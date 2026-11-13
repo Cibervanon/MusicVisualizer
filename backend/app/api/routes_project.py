@@ -113,8 +113,19 @@ async def edit_patch(project_id: str, edit_id: str, body: EditPatch) -> dict[str
         if not segments:
             raise ValidationError("El montaje debe tener al menos un segmento.")
         transition = edl.get("transition") or {}
-        extra = float(transition.get("duration") or 0) if transition.get("type") == "crossfade" else 0.0
+        transition_type = transition.get("type") or "cut"
+        extra = (
+            float(transition.get("duration") or 0)
+            if transition_type == "crossfade"
+            else 0.0
+        )
+        source_duration_limit = float(
+            (project.get("fragment") or {}).get("duration")
+            or edl.get("duration")
+            or 0
+        )
         cursor = 0.0
+        seen_ids: set[str] = set()
         for index, segment in enumerate(segments):
             try:
                 duration = float(segment.get("duration") or 0)
@@ -122,16 +133,43 @@ async def edit_patch(project_id: str, edit_id: str, body: EditPatch) -> dict[str
                 raise ValidationError(f"Segmento {index} sin duración válida.")
             if duration < 0.12:
                 raise ValidationError(f"El segmento {index} es demasiado corto.")
-            source_start = float(segment.get("source_start") or 0)
-            source_end = float(segment.get("source_end") or source_start + duration)
             need = duration + (extra if index > 0 else 0.0)
+            try:
+                source_start = float(segment.get("source_start") or 0)
+                source_end = float(segment.get("source_end") or source_start + need)
+            except (TypeError, ValueError):
+                raise ValidationError(f"Segmento {index} con tiempos de origen inválidos.")
+            # Nunca salir del plano de origen declarado ni del máster.
+            scene_start = segment.get("scene_start")
+            scene_end = segment.get("scene_end")
+            try:
+                lower = max(0.0, float(scene_start)) if scene_start is not None else 0.0
+            except (TypeError, ValueError):
+                lower = 0.0
+            try:
+                scene_upper = float(scene_end) if scene_end is not None else float("inf")
+            except (TypeError, ValueError):
+                scene_upper = float("inf")
+            upper = min(master_duration or float("inf"), scene_upper)
+            if upper <= lower:
+                upper = master_duration or lower + need
+            source_start = max(lower, min(source_start, max(lower, upper - 0.1)))
             if source_end - source_start < need:
                 source_end = source_start + need
-            if master_duration and source_end > master_duration:
-                source_end = master_duration
-                source_start = max(0.0, source_end - need)
+            if source_end > upper:
+                source_end = upper
+                source_start = max(lower, source_end - need)
             if source_end - source_start < 0.1:
                 raise ValidationError(f"El segmento {index} no cabe en el vídeo fuente.")
+            segment_id = str(segment.get("id") or "").strip()
+            if not segment_id or segment_id in seen_ids:
+                segment_id = f"{edit_id}-seg-{index:03d}"
+                suffix = 1
+                while segment_id in seen_ids:
+                    segment_id = f"{edit_id}-seg-{index:03d}-{suffix}"
+                    suffix += 1
+            seen_ids.add(segment_id)
+            segment["id"] = segment_id
             segment["index"] = index
             segment["timeline_start"] = round(cursor, 4)
             segment["duration"] = round(duration, 4)
@@ -139,23 +177,23 @@ async def edit_patch(project_id: str, edit_id: str, body: EditPatch) -> dict[str
             segment["source_start"] = round(source_start, 4)
             segment["source_end"] = round(source_end, 4)
             segment["source_duration"] = round(source_end - source_start, 4)
-            segment["transition"] = "cut" if index == 0 else (transition.get("type") or "cut")
+            segment["transition"] = "cut" if index == 0 else transition_type
             cursor += duration
-        target = float(edl.get("duration") or cursor)
-        delta = target - cursor
-        if abs(delta) > 0.02:
-            last = segments[-1]
-            new_duration = float(last["duration"]) + delta
-            if new_duration < 0.12:
-                raise ValidationError("El montaje no puede terminar antes del último segmento.")
-            last["duration"] = round(new_duration, 4)
-            last["timeline_end"] = round(float(last["timeline_start"]) + new_duration, 4)
+
+        # La duración del EDL es la suma real de segmentos (edición ripple).
+        # Así acortar el último clip no se revierte silenciosamente al guardar.
+        if source_duration_limit and cursor > source_duration_limit + 0.02:
+            raise ValidationError(
+                "El montaje no puede durar más que el fragmento de audio "
+                f"({source_duration_limit:.2f} s)."
+            )
+        edl["duration"] = round(cursor, 4)
         edl["segments"] = segments
         edl["stats"] = {
             **(edl.get("stats") or {}),
             "segments": len(segments),
-            "cuts_per_second": round(len(segments) / max(0.1, float(edl.get("duration") or 1)), 3),
-            "avg_shot": round(float(edl.get("duration") or 0) / len(segments), 3),
+            "cuts_per_second": round(len(segments) / max(0.1, cursor), 3),
+            "avg_shot": round(cursor / len(segments), 3),
             "unique_scenes": len({str(s.get("scene_id")) for s in segments}),
         }
 

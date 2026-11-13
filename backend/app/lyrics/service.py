@@ -9,7 +9,7 @@ from typing import Any
 from ..core.errors import AppError, NotFoundError
 from ..core.paths import project_layout
 from ..core.util import read_json, write_json
-from ..project.manager import load_project, save_project
+from ..project.manager import load_project, mutate_project
 from .ass_builder import write_ass
 from .presets import default_style, merge_style
 from .parser import normalize_lines
@@ -49,23 +49,34 @@ def save_lyrics(
     style: dict[str, Any] | None = None,
     enabled: bool = True,
 ) -> dict[str, Any]:
-    project = load_project(project_id)
-    duration = float((project.get("fragment") or {}).get("duration") or 30.0)
-    normalized = normalize_lines(lines, duration, source=source)
-    merged_style = merge_style((style or {}).get("id"), style)
-    payload = {
-        "enabled": enabled,
-        "source": source,
-        "style": merged_style,
-        "lines": normalized,
-        "updated_at": time.time(),
-        "note": "Las letras automáticas pueden contener errores. Revísalas antes de exportar.",
-    }
+    """Guarda las letras sin perder cambios concurrentes del proyecto.
+
+    Antes se hacía load → modificar → save fuera del lock: un render que
+    terminase en paralelo podía desaparecer del project.json. Ahora la lectura
+    y la escritura ocurren dentro de `mutate_project` (lock reentrante).
+    """
     layout = project_layout(project_id)
-    write_json(layout["lyrics"] / "lyrics.json", payload)
-    project["lyrics"] = payload
-    save_project(project)
-    return payload
+    merged_style = merge_style((style or {}).get("id"), style)
+    result: dict[str, Any] = {}
+
+    def mutate(project: dict[str, Any]) -> None:
+        duration = float((project.get("fragment") or {}).get("duration") or 30.0)
+        normalized = normalize_lines(lines, duration, source=source)
+        payload = {
+            "enabled": enabled,
+            "source": source,
+            "style": merged_style,
+            "lines": normalized,
+            "updated_at": time.time(),
+            "note": "Las letras automáticas pueden contener errores. Revísalas antes de exportar.",
+        }
+        write_json(layout["lyrics"] / "lyrics.json", payload)
+        project["lyrics"] = payload
+        result.clear()
+        result.update(payload)
+
+    mutate_project(project_id, mutate)
+    return result
 
 
 def set_lyrics_payload(project_id: str, payload: dict[str, Any]) -> dict[str, Any]:

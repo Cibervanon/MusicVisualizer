@@ -9,6 +9,7 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/tests/.build/
 
 # Datos locales y temporales
 projects/

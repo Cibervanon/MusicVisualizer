@@ -68,8 +68,15 @@ class JobStore:
             if job is None:
                 raise AppError("Trabajo no encontrado.", code="job_not_found", status_code=404)
             for key, value in fields.items():
-                if key == "status" and job.get("status") == "cancelled":
-                    continue
+                if key == "status":
+                    current = job.get("status")
+                    # `cancelled` es definitivo.
+                    if current == "cancelled":
+                        continue
+                    # Un trabajo en cancelación no puede volver a running/queued/done:
+                    # el usuario ya pidió parar y el runner debe confirmar cancelled.
+                    if current == "cancelling" and value in {"queued", "running", "done"}:
+                        continue
                 job[key] = value
             if fields.get("message"):
                 job.setdefault("logs", []).append(
@@ -162,7 +169,14 @@ class JobStore:
                 )
             finally:
                 job = await self.get(job_id)
-                if job.get("status") not in TERMINAL:
+                if job.get("status") == "cancelling":
+                    await self.update(
+                        job_id,
+                        status="cancelled",
+                        message="Cancelado por el usuario",
+                        finished_at=time.time(),
+                    )
+                elif job.get("status") not in TERMINAL:
                     await self.update(
                         job_id,
                         status="done",

@@ -305,6 +305,7 @@ def plan_edit(
 
         segments.append(
             {
+                "id": f"{edit_id}-seg-{len(segments):03d}",
                 "index": len(segments),
                 "timeline_start": round(t, 4),
                 "timeline_end": round(end, 4),
@@ -331,13 +332,16 @@ def plan_edit(
         scene = max(scenes, key=lambda s: float(s.get("quality") or 0))
         segments.append(
             {
+                "id": f"{edit_id}-seg-000",
                 "index": 0,
                 "timeline_start": 0.0,
                 "timeline_end": round(duration, 4),
                 "duration": round(duration, 4),
                 "source_start": round(float(scene["start"]), 4),
                 "source_end": round(min(float(scene["end"]), float(scene["start"]) + duration), 4),
-                "source_duration": round(duration, 4),
+                "source_duration": round(
+                    min(duration, max(0.2, float(scene["duration"]))), 4
+                ),
                 "scene_id": scene.get("id"),
                 "scene_start": round(float(scene["start"]), 4),
                 "scene_end": round(float(scene["end"]), 4),
@@ -428,11 +432,17 @@ def validate_edl(edl: dict[str, Any], master_duration: float | None = None) -> l
     total = sum(float(s.get("duration") or 0) for s in segments)
     if abs(total - float(edl.get("duration") or 0)) > 0.05:
         issues.append(f"La suma de segmentos ({total:.2f}s) no coincide con la duración del EDL.")
+    ids = [str(s.get("id")) for s in segments if s.get("id")]
+    if len(ids) != len(set(ids)):
+        issues.append("Hay identificadores de segmento duplicados.")
     for segment in segments:
-        if float(segment.get("duration") or 0) <= 0.05:
+        duration = float(segment.get("duration") or 0)
+        if duration <= 0.05:
             issues.append(f"Segmento {segment.get('index')} con duración no válida.")
         if float(segment.get("source_start") or 0) < 0:
             issues.append(f"Segmento {segment.get('index')} empieza antes del vídeo.")
+        if float(segment.get("source_duration") or 0) + 0.02 < duration:
+            issues.append(f"Segmento {segment.get('index')} no tiene metraje suficiente.")
         if master_duration is not None and float(segment.get("source_end") or 0) > master_duration + 0.2:
             issues.append(f"Segmento {segment.get('index')} sale del vídeo fuente.")
     return issues

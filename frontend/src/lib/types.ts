@@ -84,6 +84,7 @@ export interface EditSummary {
   };
   segments: number;
   created_at: number;
+  edited_at?: number | null;
   render: RenderInfo | null;
 }
 
@@ -294,6 +295,7 @@ export interface Capabilities {
 }
 
 export interface Segment {
+  id: string;
   index: number;
   timeline_start: number;
   timeline_end: number;
@@ -334,4 +336,5 @@ export interface EDL {
   lyrics: { enabled: boolean; style: Record<string, unknown> };
   allowed_effects: string[];
   created_at: number;
+  edited_at?: number | null;
 }

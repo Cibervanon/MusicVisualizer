@@ -90,6 +90,10 @@ Vite sirve en `http://127.0.0.1:5173` y redirige `/api` al backend.
 
 Los proyectos se reabren solos al volver: el último id se guarda en `localStorage`. También aparecen en **Proyectos recientes**.
 
+### Edición y duración
+
+Cada segmento tiene un `id` estable, así que seleccionar, mover, dividir, duplicar o borrar no depende de su posición. La duración del EDL es la **suma real de sus segmentos**: si acortas el último clip, el montaje se acorta (ripple) y ese cambio se guarda. El límite para alargar es la duración del fragmento de audio; el backend rechaza cualquier montaje que lo supere. Preview y render final usan el mismo EDL guardado; solo cambian resolución y ajustes de codificación. Un render se marca como **desactualizado** cuando su `created_at` es anterior al `edited_at` del EDL.
+
 ## Arquitectura
 
 ```
@@ -193,6 +197,22 @@ QSV se detecta automáticamente. Si `h264_qsv` falla, el render reintenta con `l
 - La importación de YouTube es opcional y exige confirmar que tienes derechos. La app no aloja ni distribuye contenido de terceros.
 - Usa música y vídeo propios, con licencia o con permiso expreso.
 
+## Pruebas
+
+Pruebas automáticas incluidas (sin dependencias extra):
+
+```bat
+:: Backend: regresiones de rutas, EDL, letras, cancelación y render
+cd backend
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+
+:: Frontend: helpers puros de edición (IDs, ripple, split, move, duplicate)
+cd frontend
+npm test
+```
+
+`npm test` compila `tests/edit.test.ts` con esbuild y lo ejecuta en Node; no necesita Vitest. El backend usa `unittest` de la biblioteca estándar.
+
 ## Estado verificado
 
 Pruebas end-to-end realizadas con archivos reales:
@@ -202,8 +222,15 @@ Pruebas end-to-end realizadas con archivos reales:
 - Generación de 2 clips (Cinematic y Dynamic) con validación ffprobe correcta.
 - Edición de grade guardada en el EDL y aplicada en preview/final.
 - Undo/redo del timeline y guardado.
+- Selección por `id` estable, mover, dividir, duplicar, borrar y undo/redo en el timeline.
+- Recorte del último segmento persistido: 12,000 s → 11,114 s; render real de 11,133 s de vídeo y 11,115 s de audio (sincronizados, validado con ffprobe).
+- Render crossfade verificado: 12,000 s de vídeo y 12,000 s de audio.
+- Preview real desde el editor con el mismo EDL guardado, sin falsos abortos y sin errores 404.
+- Nombres de archivo de render únicos por id: un render heredado y uno nuevo del mismo clip ya no comparten archivo.
+- Badge de render desactualizado comparando `edited_at` del EDL con `created_at` del render.
 - Letra “Sin mirar atrás” guardada, quemada en preview y final (frame verificado).
 - Descarga individual y ZIP (1,5 MB) desde la interfaz.
 - Reanudación automática del proyecto tras recargar.
+- 14 pruebas de regresión de backend y 13 de frontend en verde.
 
 La arquitectura detallada, decisiones y contratos JSON están en [`docs/FASE-1-ARQUITECTURA.md`](docs/FASE-1-ARQUITECTURA.md).

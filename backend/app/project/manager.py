@@ -5,6 +5,7 @@ Un proyecto = `projects/<id>/project.json` + subcarpetas. No hay base de datos.
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 import uuid
@@ -12,8 +13,10 @@ from pathlib import Path
 from typing import Any
 
 from ..core.errors import NotFoundError, ValidationError
-from ..core.paths import ensure_dirs, project_dir, project_layout
+from ..core.paths import ensure_dirs, project_dir, project_layout, safe_join
 from ..core.util import read_json, safe_filename, write_json
+
+_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")
 
 _lock = threading.RLock()
 
@@ -110,8 +113,21 @@ def mutate_project(project_id: str, mutator: Any) -> dict[str, Any]:
         return save_project(project)
 
 
+def validate_id(value: str, kind: str = "id") -> str:
+    """Rechaza identificadores que puedan escapar de su carpeta."""
+    if not isinstance(value, str) or not _ID_RE.match(value):
+        raise ValidationError(f"{kind} no válido.")
+    return value
+
+
 def edit_path(project_id: str, edit_id: str) -> Path:
-    path = project_layout(project_id)["edits"] / f"{edit_id}.json"
+    # `edit_id` llega desde la URL: validarlo antes de tocar el sistema de archivos.
+    validate_id(edit_id, "edit_id")
+    edits_dir = project_layout(project_id)["edits"]
+    try:
+        path = safe_join(edits_dir, f"{edit_id}.json")
+    except ValueError as exc:
+        raise ValidationError("edit_id no válido.") from exc
     if not path.exists():
         raise NotFoundError(f"Edición no encontrada: {edit_id}")
     return path
@@ -148,9 +164,38 @@ def layout(project_id: str) -> dict[str, Path]:
 def add_render(project_id: str, render: dict[str, Any]) -> dict[str, Any]:
     with _lock:
         project = load_project(project_id)
-        project["renders"] = [r for r in project.get("renders", []) if r.get("id") != render.get("id")]
+        existing = project.get("renders", [])
+
+        def superseded(record: dict[str, Any]) -> bool:
+            # Mismo id (re-render) o un registro heredado del mismo clip y tipo
+            # (p. ej. `r_edit_01_preview` frente a `r_<project>_edit_01_preview`).
+            if record.get("id") == render.get("id"):
+                return True
+            return (
+                record.get("edit_id") == render.get("edit_id")
+                and record.get("type") == render.get("type")
+                and record.get("id") != render.get("id")
+            )
+
+        previous = [
+            r for r in existing if superseded(r) and r.get("path") != render.get("path")
+        ]
+        project["renders"] = [r for r in existing if not superseded(r)]
         project["renders"].insert(0, render)
         save_project(project)
+        # Al reemplazar un render el archivo anterior quedaría huérfano ocupando
+        # disco. Se borra solo si ningún registro restante lo usa todavía.
+        if previous:
+            root = project_layout(project_id)["root"]
+            still_used = {r.get("path") for r in project["renders"]}
+            for old in previous:
+                old_path = old.get("path")
+                if not old_path or old_path in still_used:
+                    continue
+                try:
+                    safe_join(root, old_path).unlink(missing_ok=True)
+                except (ValueError, OSError):
+                    pass
         return render
 
 

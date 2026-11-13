@@ -350,6 +350,7 @@ export function LabeledSlider({
   max,
   step = 0.01,
   onChange,
+  onFocus,
   format,
 }: {
   label: string;
@@ -358,6 +359,7 @@ export function LabeledSlider({
   max: number;
   step?: number;
   onChange: (value: number) => void;
+  onFocus?: () => void;
   format?: (value: number) => string;
 }) {
   return (
@@ -373,6 +375,7 @@ export function LabeledSlider({
         max={max}
         step={step}
         value={value}
+        onFocus={onFocus}
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </div>

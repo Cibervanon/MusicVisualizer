@@ -95,6 +95,7 @@ def generate_versions(
             best = candidate
         best["similarity_max"] = round(best_score if best_score < 2.0 else 0.0, 3)
         best["created_at"] = time.time()
+        best["edited_at"] = best["created_at"]
         best["duration"] = round(
             sum(float(s["duration"]) for s in best["segments"]), 4
         )
@@ -122,5 +123,6 @@ def edit_summary(edl: dict[str, Any], render: dict[str, Any] | None = None) -> d
         "stats": edl.get("stats"),
         "segments": len(edl.get("segments") or []),
         "created_at": edl.get("created_at"),
+        "edited_at": edl.get("edited_at"),
         "render": render,
     }

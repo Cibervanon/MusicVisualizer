@@ -10,7 +10,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { api, ApiError, waitForJob } from "../lib/api";
 import type { Job, LyricsLine, LyricsStyle, TextPreset } from "../lib/types";
@@ -32,7 +32,7 @@ interface LyricsEditorProps {
   onChangeEnabled: (enabled: boolean) => void;
 }
 
-function normalizeLines(lines: LyricsLine[], duration: number): LyricsLine[] {
+function normalizeLines(lines: LyricsLine[], duration: number): Array<LyricsLine & { id: string }> {
   return lines
     .map((line, index) => {
       const start = clamp(Number(line.start) || 0, 0, Math.max(0, duration - 0.2));
@@ -64,18 +64,26 @@ export function LyricsEditor({
   const [transcribeJob, setTranscribeJob] = useState<Job | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const patchLine = (index: number, patch: Partial<LyricsLine>) => {
-    const next = lines.map((line, i) => (i === index ? { ...line, ...patch } : line));
+  // Las líneas se ordenan por inicio, así que parcheamos por id estable en vez
+  // de por índice para que reordenar durante la edición no afecte a otra línea.
+  const rows = useMemo(() => normalizeLines(lines, duration), [lines, duration]);
+
+  const patchLine = (id: string, patch: Partial<LyricsLine>) => {
+    const next = rows.map((line) => (line.id === id ? { ...line, ...patch } : line));
     onChangeLines(normalizeLines(next, duration));
   };
 
+  const removeLine = (id: string) => {
+    onChangeLines(normalizeLines(rows.filter((line) => line.id !== id), duration));
+  };
+
   const addLine = () => {
-    const last = lines[lines.length - 1];
+    const last = rows[rows.length - 1];
     const start = last ? Math.min(duration - 0.5, last.end) : 0;
     const end = Math.min(duration, start + 3);
     onChangeLines(
       normalizeLines(
-        [...lines, { id: uid(), start, end, text: "Nueva línea" }],
+        [...rows, { id: uid(), start, end, text: "Nueva línea" }],
         duration,
       ),
     );
@@ -166,7 +174,7 @@ export function LyricsEditor({
         <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.35),transparent_55%),radial-gradient(circle_at_80%_80%,rgba(34,211,238,0.18),transparent_50%)]" />
         <div className="relative flex h-16 items-center justify-center text-center">
           <span style={previewStyle}>
-            {lines[0]?.text || "Así se verá tu letra"}
+            {rows[0]?.text || "Así se verá tu letra"}
           </span>
         </div>
         <div className="relative mt-2 text-center text-[10px] uppercase tracking-[0.2em] text-white/25">
@@ -445,7 +453,7 @@ export function LyricsEditor({
         )}
 
         <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
-          {lines.length === 0 && (
+          {rows.length === 0 && (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-white/10 px-4 py-8 text-center">
               <Captions size={18} className="text-white/25" />
               <p className="text-[11px] text-white/30">
@@ -453,9 +461,9 @@ export function LyricsEditor({
               </p>
             </div>
           )}
-          {lines.map((line, index) => (
+          {rows.map((line) => (
             <div
-              key={line.id || index}
+              key={line.id}
               className="grid grid-cols-[54px_54px_1fr_28px] items-center gap-1.5"
             >
               <input
@@ -464,7 +472,7 @@ export function LyricsEditor({
                 max={duration}
                 step={0.1}
                 value={Number(line.start.toFixed(2))}
-                onChange={(event) => patchLine(index, { start: Number(event.target.value) })}
+                onChange={(event) => patchLine(line.id, { start: Number(event.target.value) })}
                 className="field px-2 py-1 text-[11px]"
                 title="Inicio"
               />
@@ -474,18 +482,18 @@ export function LyricsEditor({
                 max={duration}
                 step={0.1}
                 value={Number(line.end.toFixed(2))}
-                onChange={(event) => patchLine(index, { end: Number(event.target.value) })}
+                onChange={(event) => patchLine(line.id, { end: Number(event.target.value) })}
                 className="field px-2 py-1 text-[11px]"
                 title="Fin"
               />
               <input
                 value={line.text}
-                onChange={(event) => patchLine(index, { text: event.target.value })}
+                onChange={(event) => patchLine(line.id, { text: event.target.value })}
                 className="field px-2 py-1 text-xs"
                 placeholder="Texto de la línea"
               />
               <button
-                onClick={() => onChangeLines(lines.filter((_, i) => i !== index))}
+                onClick={() => removeLine(line.id)}
                 className="rounded-lg p-1.5 text-white/25 transition hover:bg-rose-500/10 hover:text-rose-300"
                 aria-label="Eliminar línea"
               >
