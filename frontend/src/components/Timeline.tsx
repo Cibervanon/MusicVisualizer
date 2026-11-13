@@ -15,8 +15,10 @@ interface TimelineProps {
   onBeginInteraction: () => void;
   onChange: (segments: Segment[]) => void;
   onSplit?: () => void;
+  onDuplicate?: () => void;
   onRemove?: () => void;
   onMoveSelection?: (direction: -1 | 1) => void;
+  hasSelection?: boolean;
 }
 
 type DragState = {
@@ -70,7 +72,9 @@ export function Timeline({
       const timelineFocused =
         target === wrapRef.current ||
         target === rulerRef.current ||
-        target.closest('[role="button"][aria-label^="Segmento"]') !== null;
+        target.closest('[role="button"][aria-label^="Segmento"]') !== null ||
+        // Also check if a child of ruler is focused (playhead marker, ticks)
+        (rulerRef.current && rulerRef.current.contains(target));
 
       if (!timelineFocused) return;
 
@@ -241,7 +245,6 @@ export function Timeline({
         ref={rulerRef}
         className="relative h-6 cursor-crosshair border-b border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70"
         onClick={seek}
-        onKeyDown={(e) => e.stopPropagation()}
         title="Haz clic para mover el cursor · ←/→ mueve cursor · Shift+←/→ selecciona segmento"
         tabIndex={0}
       >
@@ -296,6 +299,7 @@ export function Timeline({
               onPointerMove={onPointerMove}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
+              onFocus={() => onSelect(segment.id)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();

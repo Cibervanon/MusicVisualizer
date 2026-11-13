@@ -18,6 +18,7 @@ interface EditorTimelineProps {
   onSplit: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  onMoveSelection: (direction: -1 | 1) => void;
   hasSelection: boolean;
 }
 
@@ -35,6 +36,7 @@ export function EditorTimeline({
   onSplit,
   onDuplicate,
   onRemove,
+  onMoveSelection,
   hasSelection,
 }: EditorTimelineProps) {
   return (
@@ -64,6 +66,11 @@ export function EditorTimeline({
         onSeek={onSeek}
         onBeginInteraction={onBeginInteraction}
         onChange={onChange}
+        onSplit={onSplit}
+        onDuplicate={onDuplicate}
+        onRemove={onRemove}
+        onMoveSelection={onMoveSelection}
+        hasSelection={hasSelection}
       />
     </div>
   );

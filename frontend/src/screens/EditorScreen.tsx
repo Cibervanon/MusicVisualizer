@@ -596,6 +596,7 @@ export function EditorScreen() {
               onSplit={splitSelected}
               onDuplicate={duplicateSelected}
               onRemove={removeSelected}
+              onMoveSelection={moveSelected}
               hasSelection={!!selected}
             />
           </div>
