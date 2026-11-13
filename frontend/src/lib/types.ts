@@ -5,6 +5,13 @@ export type Resolution = "720p" | "1080p" | "1440p";
 export type Quality = "fast" | "balanced" | "high";
 export type Encoder = "cpu" | "qsv";
 
+/** Branded types for ID safety */
+export type Brand<T, B> = T & { __brand: B };
+export type ProjectId = Brand<string, "ProjectId">;
+export type EditId = Brand<string, "EditId">;
+export type RenderId = Brand<string, "RenderId">;
+export type JobId = Brand<string, "JobId">;
+
 export interface ProjectAudio {
   filename: string;
   path: string;

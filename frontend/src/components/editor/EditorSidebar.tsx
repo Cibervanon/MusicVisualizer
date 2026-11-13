@@ -2,14 +2,14 @@ import { Download, Eye, History, Zap, Loader2, Clapperboard, Volume2, Wand2 } fr
 
 import { Badge, Button, Card, ProgressBar } from "../ui";
 import { cn, formatBytes, formatTime, stageLabel } from "../../lib/utils";
-import type { RenderInfo, Job } from "../../lib/types";
+import type { RenderInfo, Job, EDL, Project } from "../../lib/types";
 import { downloadUrl } from "../../lib/api";
 import { useStudio } from "../../store/studio";
 
 interface EditorSidebarProps {
   projectId: string;
-  edit: any;
-  project: any;
+  edit: EDL;
+  project: Project;
   rendered: RenderInfo | null;
   renderingType: "preview" | "final" | null;
   renderJob: Job | null;

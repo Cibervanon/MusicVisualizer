@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import { Badge, Button, Card, LabeledSlider, SectionHeading } from "../ui";
 import { cn, clamp, formatTime } from "../../lib/utils";
-import type { EDL, Segment, LyricsStyle } from "../../lib/types";
+import type { EDL, Segment, LyricsStyle, TextPreset } from "../../lib/types";
 import { LyricsEditor } from "../LyricsEditor";
 import { useStudio } from "../../store/studio";
 
@@ -28,7 +28,7 @@ interface EditorInspectorProps {
   onResetEffects: () => void;
   onSaveLyrics: () => void;
   savingLyrics: boolean;
-  lyricsPresets: any[];
+  lyricsPresets: TextPreset[];
   animations: string[];
   fonts: string[];
   onChangeLyricsLines: (lines: Array<{ id?: string; start: number; end: number; text: string }>) => void;
