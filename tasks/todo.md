@@ -234,18 +234,18 @@
 
 ---
 
-### Task 10: Improve render validation (add frame-accurate checks)
+### Task 10: Improve render validation (add frame-accurate checks) ✅ DONE
 **Description:** Enhance `backend/app/quality/validator.py`. Add: frame count verification, audio/video sync check (pts drift), keyframe interval check, color space validation, H.264 profile/level check.
 
 **Acceptance criteria:**
-- [ ] Validates frame count matches expected @ fps
-- [ ] Checks audio/video sync within 1 frame
-- [ ] Verifies H.264 High profile, level 4.1+
-- [ ] Reports detailed metrics in validation info
+- [x] Validates frame count matches expected @ fps
+- [x] Checks audio/video sync within 1 frame
+- [x] Verifies H.264 High profile, level 4.1+
+- [x] Reports detailed metrics in validation info
 
 **Verification:**
-- [ ] `python -m unittest discover -s tests` passes (add validation tests)
-- [ ] Manual: render clip, verify validation output
+- [x] `python -m unittest discover -s tests` passes (add validation tests)
+- [x] Manual: render clip, verify validation output
 
 **Dependencies:** None
 
@@ -265,21 +265,22 @@
 
 ---
 
-### Task 11: Add keyboard navigation to Timeline
+### Task 11: Add keyboard navigation to Timeline ✅ DONE
 **Description:** Implement full keyboard support in Timeline component: arrow keys to move playhead, Shift+arrows to select segments, Enter to split, Delete to remove, Ctrl+Z/Y for undo/redo. Add focus indicators.
 
 **Acceptance criteria:**
-- [ ] Left/Right arrows move playhead by 1 frame
-- [ ] Shift+Left/Right select adjacent segment
-- [ ] Enter splits at playhead
-- [ ] Delete removes selected segment
-- [ ] Focus ring visible on all interactive elements
-- [ ] Works with screen reader (announces position)
+- [x] Left/Right arrows move playhead by 1 frame
+- [x] Shift+Left/Right select adjacent segment
+- [x] Enter splits at playhead
+- [x] Delete removes selected segment
+- [x] Focus ring visible on all interactive elements
+- [x] Works with screen reader (announces position)
+- [x] Home/End jump to start/end
 
 **Verification:**
-- [ ] `npm test` passes
-- [ ] `npm run build` succeeds
-- [ ] Manual: keyboard-only editing session
+- [x] `npm test` passes
+- [x] `npm run build` succeeds
+- [x] Manual: keyboard-only editing session
 
 **Dependencies:** Task 1
 

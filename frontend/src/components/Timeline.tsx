@@ -14,6 +14,9 @@ interface TimelineProps {
   onSeek: (time: number) => void;
   onBeginInteraction: () => void;
   onChange: (segments: Segment[]) => void;
+  onSplit?: () => void;
+  onRemove?: () => void;
+  onMoveSelection?: (direction: -1 | 1) => void;
 }
 
 type DragState = {
@@ -36,8 +39,12 @@ export function Timeline({
   onSeek,
   onBeginInteraction,
   onChange,
+  onSplit,
+  onRemove,
+  onMoveSelection,
 }: TimelineProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const dragRef = useRef<DragState | null>(null);
   const segmentsRef = useRef(segments);
@@ -52,6 +59,87 @@ export function Timeline({
     observer.observe(wrapRef.current);
     return () => observer.disconnect();
   }, []);
+
+  // Keyboard navigation
+  const frameDuration = 1 / 30; // assuming 30fps for frame step
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      // Only handle keys when timeline or ruler is focused
+      const timelineFocused =
+        target === wrapRef.current ||
+        target === rulerRef.current ||
+        target.closest('[role="button"][aria-label^="Segmento"]') !== null;
+
+      if (!timelineFocused) return;
+
+      const selectedIndex = segments.findIndex((s) => s.id === selectedId);
+
+      switch (event.key) {
+        case "ArrowRight": {
+          event.preventDefault();
+          if (event.shiftKey && onMoveSelection) {
+            onMoveSelection(1);
+          } else {
+            const newTime = Math.min(duration, playhead + frameDuration);
+            onSeek(newTime);
+          }
+          break;
+        }
+        case "ArrowLeft": {
+          event.preventDefault();
+          if (event.shiftKey && onMoveSelection) {
+            onMoveSelection(-1);
+          } else {
+            const newTime = Math.max(0, playhead - frameDuration);
+            onSeek(newTime);
+          }
+          break;
+        }
+        case "ArrowUp": {
+          event.preventDefault();
+          const newTime = Math.min(duration, playhead + frameDuration * 10);
+          onSeek(newTime);
+          break;
+        }
+        case "ArrowDown": {
+          event.preventDefault();
+          const newTime = Math.max(0, playhead - frameDuration * 10);
+          onSeek(newTime);
+          break;
+        }
+        case "Enter": {
+          if (event.shiftKey && onSplit) {
+            event.preventDefault();
+            onSplit();
+          }
+          break;
+        }
+        case "Delete":
+        case "Backspace": {
+          if (onRemove && selectedId) {
+            event.preventDefault();
+            onRemove();
+          }
+          break;
+        }
+        case "Home": {
+          event.preventDefault();
+          onSeek(0);
+          break;
+        }
+        case "End": {
+          event.preventDefault();
+          onSeek(duration);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [playhead, duration, selectedId, segments, onSeek, onSplit, onRemove, onMoveSelection]);
 
   const pxPerSec = width / Math.max(0.1, duration);
   const safeMaster = Math.max(masterDuration || duration, 1);
@@ -147,12 +235,15 @@ export function Timeline({
   for (let value = 0; value <= duration + 0.001; value += tickStep) ticks.push(value);
 
   return (
-    <div className="select-none" ref={wrapRef}>
+    <div className="select-none" ref={wrapRef} tabIndex={0} onFocus={(e) => e.currentTarget.focus()}>
       {/* ruler */}
       <div
-        className="relative h-6 cursor-crosshair border-b border-white/10"
+        ref={rulerRef}
+        className="relative h-6 cursor-crosshair border-b border-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime/70"
         onClick={seek}
-        title="Haz clic para mover el cursor"
+        onKeyDown={(e) => e.stopPropagation()}
+        title="Haz clic para mover el cursor · ←/→ mueve cursor · Shift+←/→ selecciona segmento"
+        tabIndex={0}
       >
         {ticks.map((tick) => (
           <div
@@ -245,6 +336,9 @@ export function Timeline({
       <p className="mt-2 text-[10px] text-white/25">
         Arrastra un bloque para desplazar su punto de entrada en el máster · arrastra el borde
         derecho para alargar o acortar · clic en la regla para mover el cursor.
+        <br />
+        Teclado: ←/→ mover cursor · Shift+←/→ seleccionar segmento · Enter dividir · Supr
+        eliminar · Inicio/Fin saltar al principio/final.
       </p>
     </div>
   );
