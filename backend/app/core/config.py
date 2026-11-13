@@ -40,6 +40,9 @@ class Settings:
     # Aviso de disco: por debajo de este margen la app advierte antes de empezar.
     min_free_disk_gb: float = float(os.environ.get("MCS_MIN_FREE_DISK_GB", "8"))
 
+    # Nivel de logging.
+    log_level: str = os.environ.get("MCS_LOG_LEVEL", "INFO")
+
     root_dir: str = str(ROOT_DIR)
 
     extras: tuple[str, ...] = field(default_factory=tuple)

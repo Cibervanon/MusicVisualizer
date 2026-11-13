@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, ORJSONResponse
@@ -29,13 +29,11 @@ from .core.errors import (
     unexpected_error_handler,
     validation_error_handler,
 )
+from .core.logging import RequestIdMiddleware, get_logger, set_request_id
 from .core.paths import FRONTEND_DIST, ensure_dirs
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logger = logging.getLogger("music-clip-studio")
+# Configure structured logging
+logger = get_logger("music-clip-studio")
 
 app = FastAPI(
     title=APP_NAME,
@@ -45,6 +43,9 @@ app = FastAPI(
     redoc_url=None,
     openapi_url="/api/openapi.json",
 )
+
+# Add request ID middleware (must be first to capture all requests)
+app.add_middleware(RequestIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -83,6 +84,28 @@ async def on_startup() -> None:
     ensure_dirs()
     logger.info("%s %s listo", APP_NAME, APP_VERSION)
     logger.info("FFmpeg: %s", "disponible" if settings else "?")
+
+
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    import time
+    start = time.perf_counter()
+    request_id = set_request_id(request.headers.get("x-request-id"))
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "HTTP request",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": round(duration_ms, 2),
+            "request_id": request_id,
+        },
+    )
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 # Servido del frontend compilado (modo producción) con fallback SPA.

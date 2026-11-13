@@ -14,6 +14,7 @@ from ..analysis.video_analyzer import analyze_and_cache
 from ..core.config import settings
 from ..core.errors import ProcessingError, ValidationError
 from ..core.ffmpeg import probe
+from ..core.logging import get_logger, log_render_progress, set_job_id
 from ..core.paths import project_layout
 from ..core.util import read_json, sha1_of, write_json
 from ..editing.generator import edit_summary, generate_versions
@@ -29,6 +30,8 @@ from ..project.manager import (
     validate_video_source,
 )
 from .manager import jobs
+
+_logger = get_logger("music-clip-studio.runners")
 
 
 def _rel(path: Path, root: Path) -> str:
@@ -501,6 +504,7 @@ async def run_generate(job_id: str, project_id: str, request: dict[str, Any]) ->
 
 
 async def run_render(job_id: str, project_id: str, edit_id: str, request: dict[str, Any]) -> None:
+    set_job_id(job_id)
     project = load_project(project_id)
     edl = read_json(edit_path(project_id, edit_id))
     if not isinstance(edl, dict):
@@ -519,6 +523,7 @@ async def run_render(job_id: str, project_id: str, edit_id: str, request: dict[s
 
     async def on_progress(value: float) -> None:
         await jobs.update(job_id, progress=max(0.02, value))
+        log_render_progress(_logger, job_id, value, "rendering")
 
     render = await render_edit(
         project,
@@ -545,6 +550,7 @@ async def run_render(job_id: str, project_id: str, edit_id: str, request: dict[s
         result={"render": render},
         finished_at=time.time(),
     )
+    set_job_id(None)
 
 
 async def run_transcribe(

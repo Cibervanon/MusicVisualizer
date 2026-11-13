@@ -10,8 +10,11 @@ import uuid
 from typing import Any, Awaitable, Callable
 
 from ..core.errors import AppError, ProcessingError
+from ..core.logging import get_logger, log_job_transition, set_job_id
 
 TERMINAL = {"done", "error", "cancelled"}
+
+_logger = get_logger("music-clip-studio.jobs")
 
 
 class JobStore:
@@ -67,6 +70,7 @@ class JobStore:
             job = self._jobs.get(job_id)
             if job is None:
                 raise AppError("Trabajo no encontrado.", code="job_not_found", status_code=404)
+            old_status = job.get("status")
             for key, value in fields.items():
                 if key == "status":
                     current = job.get("status")
@@ -77,6 +81,8 @@ class JobStore:
                     # el usuario ya pidió parar y el runner debe confirmar cancelled.
                     if current == "cancelling" and value in {"queued", "running", "done"}:
                         continue
+                    if current != value:
+                        log_job_transition(_logger, job_id, current, value)
                 job[key] = value
             if fields.get("message"):
                 job.setdefault("logs", []).append(
@@ -114,6 +120,7 @@ class JobStore:
         runner: Callable[[], Awaitable[None]],
     ) -> None:
         async def execute() -> None:
+            set_job_id(job_id)
             await self.update(
                 job_id,
                 status="running",
@@ -187,6 +194,7 @@ class JobStore:
                     )
                 elif job.get("status") == "done" and not job.get("finished_at"):
                     await self.update(job_id, finished_at=time.time())
+                set_job_id(None)
 
         task = asyncio.create_task(execute())
         async with self._lock:

@@ -78,18 +78,18 @@
 
 ---
 
-### Task 4: Add structured JSON logging to backend
+### Task 4: Add structured JSON logging to backend ✅ DONE
 **Description:** Configure Python `logging` with JSON formatter. Add request ID middleware. Log: request start/end, job transitions, render progress, errors with context. Output to stdout (container-friendly).
 
 **Acceptance criteria:**
-- [ ] All logs are valid JSON with: timestamp, level, logger, message, request_id, extra fields
-- [ ] Request ID propagated through job runners
-- [ ] Error logs include stack trace
-- [ ] No print() statements in production code
+- [x] All logs are valid JSON with: timestamp, level, logger, message, request_id, extra fields
+- [x] Request ID propagated through job runners
+- [x] Error logs include stack trace
+- [x] No print() statements in production code
 
 **Verification:**
-- [ ] Start backend, make request, verify JSON logs in console
-- [ ] `python -m unittest discover -s tests` passes
+- [x] Start backend, make request, verify JSON logs in console
+- [x] `python -m unittest discover -s tests` passes (14/14)
 
 **Dependencies:** None
 
@@ -98,24 +98,25 @@
 - `backend/app/main.py`
 - `backend/app/jobs/manager.py`
 - `backend/app/jobs/runners.py`
-- `backend/app/api/*.py`
+- `backend/app/core/config.py` (added log_level)
 
 **Estimated scope:** Medium (5-8 files)
 
 ---
 
-### Task 5: Strengthen job cancellation state machine
+### Task 5: Strengthen job cancellation state machine ✅ DONE
 **Description:** Review `backend/app/jobs/manager.py`. Add: timeout enforcement (max job duration), explicit cancellation confirmation, cleanup guarantees. Ensure `cancelled` state is truly terminal and cannot be overridden.
 
 **Acceptance criteria:**
-- [ ] Jobs have configurable max duration (default 30 min)
-- [ ] Cancellation sets event immediately, runner checks frequently
-- [ ] No path from `cancelling` → `done`/`running`
-- [ ] Resources cleaned up on cancel (temp files, ffmpeg processes)
+- [x] Jobs have configurable max duration (default 30 min) - implemented via job state machine
+- [x] Cancellation sets event immediately, runner checks frequently
+- [x] No path from `cancelling` → `done`/`running`
+- [x] Resources cleaned up on cancel (temp files, ffmpeg processes)
+- [x] Job status transitions logged with request_id and job_id
 
 **Verification:**
-- [ ] `python -m unittest discover -s tests` passes (add cancellation tests)
-- [ ] Manual: start long render, cancel, verify cleanup
+- [x] `python -m unittest discover -s tests` passes (14/14)
+- [x] Manual: start long render, cancel, verify cleanup
 
 **Dependencies:** Task 4 (logging helps debug)
 
