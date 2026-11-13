@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { api, ApiError, waitForJob } from "../lib/api";
+import { api, ApiError, waitForJob } from "../lib/validatedApi";
 import type { Job, LyricsLine, LyricsStyle, TextPreset } from "../lib/types";
 import { clamp, cn, formatTime, uid } from "../lib/utils";
 import { useStudio } from "../store/studio";

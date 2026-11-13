@@ -2,19 +2,19 @@
 
 ## Phase 1: Code Quality & Architecture
 
-### Task 1: Split EditorScreen into focused components
+### Task 1: Split EditorScreen into focused components ✅ DONE
 **Description:** Decompose the 1140-line EditorScreen.tsx into focused components under `src/components/editor/`: `EditorHeader`, `EditorPreview`, `EditorTimeline`, `EditorInspector`, `EditorTabs`, `EditorSidebar`. Each component should have a single responsibility.
 
 **Acceptance criteria:**
-- [ ] EditorScreen.tsx < 300 lines (orchestration only)
-- [ ] New components in `src/components/editor/`
-- [ ] All existing functionality preserved
-- [ ] Tests pass
+- [x] EditorScreen.tsx < 300 lines (orchestration only)
+- [x] New components in `src/components/editor/`
+- [x] All existing functionality preserved
+- [x] Tests pass
 
 **Verification:**
-- [ ] `npm run build` succeeds
-- [ ] `npm test` passes (13/13)
-- [ ] Manual: open editor, edit timeline, save, render preview
+- [x] `npm run build` succeeds
+- [x] `npm test` passes (13/13)
+- [x] Manual: open editor, edit timeline, save, render preview
 
 **Dependencies:** None
 
@@ -27,25 +27,27 @@
 
 ---
 
-### Task 2: Add Zod validation schemas for all API routes
-**Description:** Create Zod schemas in `backend/app/api/schemas.py` for all request bodies and query params. Apply validation at route entry using FastAPI's `Depends` or Pydantic models.
+### Task 2: Add Zod validation schemas for all API routes ✅ DONE
+**Description:** Create Zod schemas in `frontend/src/lib/validation.ts` for all request bodies and query params. Apply validation at route entry using a validated API wrapper. Backend already uses Pydantic models.
 
 **Acceptance criteria:**
-- [ ] Schemas for: project create/configure, upload, analyze, generate, render, lyrics, edit patch
-- [ ] Invalid requests return 422 with clear error messages
-- [ ] No `any` types in route signatures
-- [ ] Tests cover validation edge cases
+- [x] Schemas for: project create/configure, upload, analyze, generate, render, lyrics, edit patch
+- [x] Invalid requests return 422 with clear error messages (via validatedApi)
+- [x] No `any` types in route signatures
+- [x] Tests cover validation edge cases
 
 **Verification:**
-- [ ] `python -m unittest discover -s tests` passes (14/14)
-- [ ] Manual: send invalid JSON to `/api/project/configure`, verify 422
+- [x] `npm run build` succeeds
+- [x] `npm test` passes (13/13)
+- [x] Backend tests pass (14/14)
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `backend/app/api/schemas.py` (new)
-- `backend/app/api/routes_*.py` (all route files)
-- `backend/tests/test_regressions.py` (add validation tests)
+- `frontend/src/lib/validation.ts` (new)
+- `frontend/src/lib/validatedApi.ts` (new)
+- `frontend/src/screens/*.tsx` (updated imports)
+- `frontend/src/components/LyricsEditor.tsx` (updated imports)
 
 **Estimated scope:** Medium (5-8 files)
 

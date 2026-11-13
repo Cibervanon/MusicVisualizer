@@ -1,7 +1,7 @@
 import { ArrowLeft, Check, Download, Eye, Film, History, Loader2, Pause, Play, Redo2, RotateCcw, Save, Scissors, SlidersHorizontal, Split, Trash2, Undo2, Volume2, Wand2, Zap, Clapperboard, Copy, Captions } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { api, ApiError, downloadUrl, mediaUrl, waitForJob } from "../lib/api";
+import { api, ApiError, downloadUrl, mediaUrl, waitForJob } from "../lib/validatedApi";
 import {
   docDuration,
   duplicateSegment,

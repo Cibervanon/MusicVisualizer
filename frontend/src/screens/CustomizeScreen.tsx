@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { api, ApiError } from "../lib/api";
+import { api, ApiError } from "../lib/validatedApi";
 import type { Format, LyricsLine, LyricsStyle, Quality, Resolution } from "../lib/types";
 import { cn, formatBytes, targetDims } from "../lib/utils";
 import { useStudio } from "../store/studio";

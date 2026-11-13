@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { api, ApiError, waitForJob } from "../lib/api";
+import { api, ApiError, waitForJob } from "../lib/validatedApi";
 import type { Job, JobClip } from "../lib/types";
 import { cn, formatTime, stageLabel } from "../lib/utils";
 import { useStudio } from "../store/studio";

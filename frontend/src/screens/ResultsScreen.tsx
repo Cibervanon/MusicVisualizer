@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { api, ApiError, downloadUrl, mediaUrl, saveBlob } from "../lib/api";
+import { api, ApiError, downloadUrl, mediaUrl, saveBlob } from "../lib/validatedApi";
 import type { RenderInfo } from "../lib/types";
 import { cn, formatBytes, formatTime } from "../lib/utils";
 import { useStudio } from "../store/studio";

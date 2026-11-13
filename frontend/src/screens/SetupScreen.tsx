@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { api, ApiError, mediaUrl, waitForJob } from "../lib/api";
+import { api, ApiError, mediaUrl, waitForJob } from "../lib/validatedApi";
 import type { Job, Project, ProjectListItem } from "../lib/types";
 import { cn, formatBytes, formatDate, formatTime, stageLabel } from "../lib/utils";
 import { useStudio } from "../store/studio";
