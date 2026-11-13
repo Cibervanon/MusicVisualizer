@@ -2,7 +2,7 @@ import { AudioLines, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 import { Shell } from "./components/Shell";
-import { ToastHost } from "./components/ui";
+import { ToastHost, SkipLink } from "./components/ui";
 import { CustomizeScreen } from "./screens/CustomizeScreen";
 import { EditorScreen } from "./screens/EditorScreen";
 import { GeneratingScreen } from "./screens/GeneratingScreen";
@@ -57,9 +57,12 @@ export default function App() {
 
   return (
     <>
+      <SkipLink />
       {booted ? (
         <Shell>
-          <CurrentScreen />
+          <main id="main-content">
+            <CurrentScreen />
+          </main>
         </Shell>
       ) : (
         <BootScreen />

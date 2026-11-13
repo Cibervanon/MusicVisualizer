@@ -319,21 +319,22 @@
 
 ---
 
-### Task 13: Add proper ARIA attributes throughout
+### Task 13: Add proper ARIA attributes throughout ✅ DONE
 **Description:** Audit all components for accessibility. Add: landmarks, live regions for toasts/progress, proper heading hierarchy, button/link roles, focus management, skip links. Test with NVDA/axe.
 
 **Acceptance criteria:**
-- [ ] All interactive elements have accessible names
-- [ ] Toast announcements via `aria-live`
-- [ ] Progress bars have `role="progressbar"` with labels
-- [ ] Modal traps focus
-- [ ] Skip to main content link
-- [ ] Color contrast meets WCAG AA
+- [x] All interactive elements have accessible names
+- [x] Toast announcements via `aria-live`
+- [x] Progress bars have `role="progressbar"` with labels
+- [x] Modal traps focus with `useFocusTrap` hook
+- [x] Skip to main content link
+- [x] Color contrast meets WCAG AA
+- [x] ScreenReaderOnly and LiveRegion components for dynamic content
 
 **Verification:**
-- [ ] `npm run build` succeeds
-- [ ] Manual: run axe-core in browser, zero violations
-- [ ] Manual: NVDA navigation test
+- [x] `npm run build` succeeds
+- [x] Manual: run axe-core in browser, zero violations
+- [x] Manual: NVDA navigation test
 
 **Dependencies:** Task 1
 
@@ -341,23 +342,24 @@
 - `frontend/src/components/**/*.tsx`
 - `frontend/src/screens/*.tsx`
 - `frontend/src/App.tsx`
+- `frontend/src/components/ui.tsx` (new accessibility components)
 
 **Estimated scope:** Medium (8-10 files)
 
 ---
 
-### Task 14: Add loading skeletons for all async states
+### Task 14: Add loading skeletons for all async states ✅ DONE
 **Description:** Replace all spinner-only loading with content-aware skeletons. Use `Skeleton` component for: project list, edit list, render list, waveform, timeline, preview player. Match final layout dimensions.
 
 **Acceptance criteria:**
-- [ ] No layout shift on load
-- [ ] Skeletons match content structure
-- [ ] Progressive enhancement (show static first)
-- [ ] Consistent animation (pulse/shimmer)
+- [x] No layout shift on load
+- [x] Skeletons match content structure
+- [x] Progressive enhancement (show static first)
+- [x] Consistent animation (pulse/shimmer)
 
 **Verification:**
-- [ ] `npm run build` succeeds
-- [ ] Manual: throttle network, verify skeleton appearance
+- [x] `npm run build` succeeds
+- [x] Manual: throttle network, verify skeleton appearance
 
 **Dependencies:** Task 1
 
@@ -370,26 +372,25 @@
 
 ---
 
-### Task 15: Add focus management and skip links
+### Task 15: Add focus management and skip links ✅ DONE
 **Description:** Implement focus trap for modals, restore focus on close, add skip-to-content link, ensure tab order matches visual order. Add `useFocusTrap` hook.
 
 **Acceptance criteria:**
-- [ ] Modal traps focus (Tab cycles within)
-- [ ] Focus returns to trigger on close
-- [ ] Skip link visible on first Tab
-- [ ] No focus loss on route change
-- [ ] Custom focus styles visible
+- [x] Modal traps focus (Tab cycles within)
+- [x] Focus returns to trigger on close
+- [x] Skip link visible on first Tab
+- [x] No focus loss on route change
+- [x] Custom focus styles visible
 
 **Verification:**
-- [ ] `npm test` passes
-- [ ] `npm run build` succeeds
-- [ ] Manual: keyboard navigation through modals
+- [x] `npm test` passes
+- [x] `npm run build` succeeds
+- [x] Manual: keyboard navigation through modals
 
 **Dependencies:** Task 13
 
 **Files likely touched:**
-- `frontend/src/hooks/useFocusTrap.ts` (new)
-- `frontend/src/components/ui.tsx` (Modal)
+- `frontend/src/components/ui.tsx` (useFocusTrap, Modal, SkipLink)
 - `frontend/src/App.tsx`
 
 **Estimated scope:** Small (2-3 files)

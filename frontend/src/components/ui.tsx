@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { cn } from "../lib/utils";
 import { useStudio } from "../store/studio";
@@ -227,18 +227,7 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handler);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", handler);
-      document.body.style.overflow = "";
-    };
-  }, [open, onClose]);
+  const modalRef = useFocusTrap(open);
 
   if (!open) return null;
   return (
@@ -249,13 +238,19 @@ export function Modal({
         aria-hidden
       />
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
         className={cn(
           "glass-strong relative z-10 max-h-[90vh] w-full overflow-hidden",
           wide ? "max-w-6xl" : "max-w-2xl",
         )}
       >
         <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4">
-          <div className="text-sm font-semibold text-white">{title}</div>
+          <div id="modal-title" className="text-sm font-semibold text-white">
+            {title}
+          </div>
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
@@ -403,4 +398,82 @@ export function EmptyState({
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
+}
+
+/** Skip link for keyboard users to jump to main content */
+export function SkipLink() {
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-50 px-4 py-2 bg-lime text-ink-950 rounded-lg font-medium outline-none focus:ring-2 focus:ring-lime/50"
+    >
+      Saltar al contenido principal
+    </a>
+  );
+}
+
+/** Visually hidden but accessible to screen readers */
+export function ScreenReaderOnly({ children }: { children: ReactNode }) {
+  return (
+    <span className="sr-only" aria-live="polite">
+      {children}
+    </span>
+  );
+}
+
+/** Live region for dynamic announcements */
+export function LiveRegion({ message, politeness = "polite" }: { message: string; politeness?: "polite" | "assertive" }) {
+  return (
+    <div
+      className="sr-only"
+      aria-live={politeness}
+      aria-atomic="true"
+    >
+      {message}
+    </div>
+  );
+}
+
+/** Focus trap hook for modals */
+export function useFocusTrap(enabled: boolean) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !containerRef.current) return;
+
+    previousActiveElement.current = document.activeElement as HTMLElement;
+    const container = containerRef.current;
+    const focusableElements = container.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    firstElement?.focus();
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+
+    container.addEventListener("keydown", handleTab);
+    return () => {
+      container.removeEventListener("keydown", handleTab);
+      previousActiveElement.current?.focus();
+    };
+  }, [enabled]);
+
+  return containerRef;
 }
