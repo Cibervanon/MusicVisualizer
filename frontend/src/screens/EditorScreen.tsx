@@ -1,31 +1,4 @@
-import {
-  ArrowLeft,
-  Captions,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Clapperboard,
-  Copy,
-  Download,
-  Eye,
-  Film,
-  History,
-  Loader2,
-  Pause,
-  Play,
-  Redo2,
-  RefreshCw,
-  RotateCcw,
-  Save,
-  Scissors,
-  SlidersHorizontal,
-  Split,
-  Trash2,
-  Undo2,
-  Volume2,
-  Wand2,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, Check, Download, Eye, Film, History, Loader2, Pause, Play, Redo2, RotateCcw, Save, Scissors, SlidersHorizontal, Split, Trash2, Undo2, Volume2, Wand2, Zap, Clapperboard, Copy, Captions } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { api, ApiError, downloadUrl, mediaUrl, waitForJob } from "../lib/api";
@@ -41,14 +14,7 @@ import {
   splitSegmentAt,
   timelineToSource,
 } from "../lib/edit";
-import type {
-  EDL,
-  Job,
-  LyricsLine,
-  LyricsStyle,
-  RenderInfo,
-  Segment,
-} from "../lib/types";
+import type { EDL, Job, LyricsLine, LyricsStyle, RenderInfo, Segment } from "../lib/types";
 import { clamp, cn, formatBytes, formatTime, stageLabel } from "../lib/utils";
 import { useStudio } from "../store/studio";
 import { LyricsEditor } from "../components/LyricsEditor";
@@ -62,6 +28,13 @@ import {
   SectionHeading,
   Skeleton,
 } from "../components/ui";
+import {
+  EditorHeader,
+  EditorPreview,
+  EditorTimeline,
+  EditorInspector,
+  EditorSidebar,
+} from "../components/editor";
 
 interface Doc {
   segments: Segment[];
@@ -115,18 +88,14 @@ export function EditorScreen() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const docRef = useRef<Doc | null>(null);
   docRef.current = doc;
-  // Cada mutación local incrementa esta secuencia. Sirve para no aplicar una
-  // respuesta de guardado antigua encima de cambios más recientes.
   const seqRef = useRef(0);
   const loadRef = useRef(0);
 
-  // choose an edit
   useEffect(() => {
     if (!project) return;
     if (!selectedEditId && project.edits[0]) {
       setSelectedEdit(project.edits[0].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id]);
 
   const editId = selectedEditId || project?.edits[0]?.id || null;
@@ -162,10 +131,8 @@ export function EditorScreen() {
     return () => {
       if (requestId === loadRef.current) loadRef.current += 1;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, editId]);
 
-  // lyrics
   useEffect(() => {
     if (!project) return;
     setLyricsLines(project.lyrics.lines || []);
@@ -173,7 +140,6 @@ export function EditorScreen() {
     setLyricsEnabled(project.lyrics.enabled);
   }, [project?.id, project?.lyrics.updated_at]);
 
-  // existing render for this edit
   useEffect(() => {
     if (!project || !edit) {
       setRendered(null);
@@ -188,19 +154,14 @@ export function EditorScreen() {
       }
       return preview || final || null;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit?.id, project?.renders]);
 
-  // video source: preview/final render if available, otherwise the normalized master
   useEffect(() => {
     if (!project || !edit) return;
     const path = rendered?.path || edit.master;
     setVideoSrc(path ? mediaUrl(project.id, path) : "");
   }, [project?.id, edit?.master, rendered?.path]);
 
-  // El límite para alargar el montaje es el fragmento de audio completo, no la
-  // duración actual del EDL: tras acortar y guardar, la duración del EDL baja y
-  // usarla como tope impediría volver a crecer hasta el fragmento.
   const fragmentDuration = Number(project?.fragment?.duration || edit?.duration || 30);
   const masterDuration = Number(
     project?.analysis_summary.video?.duration || edit?.duration || 30,
@@ -220,7 +181,6 @@ export function EditorScreen() {
     const snapshot = JSON.parse(JSON.stringify(current)) as Doc;
     setPast((items) => {
       const last = items[items.length - 1];
-      // Evita entradas de historial que no cambian nada (focus de sliders, etc.).
       if (last && JSON.stringify(last) === JSON.stringify(snapshot)) return items;
       return [...items.slice(-39), snapshot];
     });
@@ -267,7 +227,6 @@ export function EditorScreen() {
     applyDoc(next);
   };
 
-  // Mantén la selección coherente si un segmento desaparece (undo, borrado...).
   useEffect(() => {
     if (!doc) return;
     if (selectedId && doc.segments.some((segment) => segment.id === selectedId)) return;
@@ -299,7 +258,6 @@ export function EditorScreen() {
     [doc, baseline],
   );
 
-  // Aviso honesto si se intenta cerrar con cambios sin guardar.
   useEffect(() => {
     if (!dirty) return;
     const handler = (event: BeforeUnloadEvent) => {
@@ -321,8 +279,6 @@ export function EditorScreen() {
     silent = false,
   ): Promise<{ edit: EDL; clean: boolean } | null> => {
     if (!project || !edit || !doc) return null;
-    // Sin cambios no hace falta tocar el EDL: un PATCH innecesario actualizaría
-    // `edited_at` y marcaría como desactualizado el render que vamos a lanzar.
     if (!dirty) return { edit, clean: true };
     const seqAtStart = seqRef.current;
     const snapshot = JSON.parse(JSON.stringify(doc)) as Doc;
@@ -338,8 +294,6 @@ export function EditorScreen() {
       setEdit(updated);
       const clean = seqRef.current === seqAtStart;
       if (clean) {
-        // Nadie editó mientras guardábamos: la respuesta es la verdad actual.
-        // El incremento invalida respuestas de guardados solapados.
         seqRef.current += 1;
         setDoc(fresh);
         setBaseline(JSON.stringify(fresh));
@@ -349,8 +303,6 @@ export function EditorScreen() {
           setSelectedId(fresh.segments[0]?.id ?? null);
         }
       } else {
-        // Había cambios más nuevos: no los pisamos. El baseline es lo que el
-        // servidor tiene realmente, así que la UI sigue marcando "sin guardar".
         setBaseline(JSON.stringify(snapshot));
       }
       await refreshProject();
@@ -546,53 +498,41 @@ export function EditorScreen() {
   const renderBusy = renderingType !== null;
   const edits = project.edits;
 
+  const handleVideoTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const current = event.currentTarget.currentTime;
+    if (usingRender) {
+      setPlayhead(clamp(current, 0, timelineDuration));
+    } else {
+      const mapped = sourceToTimeline(segments, current);
+      if (mapped !== null) setPlayhead(mapped);
+    }
+  };
+
+  const handleVideoLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    event.currentTarget.currentTime = usingRender
+      ? clamp(playhead, 0, timelineDuration)
+      : timelineToSource(segments, playhead);
+  };
+
   return (
     <div className="space-y-6 animate-rise">
-      <SectionHeading
-        eyebrow="Paso 05 · Editor"
-        title={`${edit.style_name} · ${formatTime(totalDuration)}`}
-        description="Ajusta cortes, efectos y letras sobre el EDL real. Guarda, previsualiza a media resolución y renderiza el MP4 final."
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
-              <button
-                onClick={undo}
-                disabled={!past.length}
-                className="rounded-lg p-2 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-25"
-                title="Deshacer (Ctrl+Z)"
-              >
-                <Undo2 size={15} />
-              </button>
-              <button
-                onClick={redo}
-                disabled={!future.length}
-                className="rounded-lg p-2 text-white/60 transition hover:bg-white/10 hover:text-white disabled:opacity-25"
-                title="Rehacer (Ctrl+Y)"
-              >
-                <Redo2 size={15} />
-              </button>
-            </div>
-            <Button variant="ghost" onClick={() => save()} loading={saving} disabled={!dirty}>
-              <Save size={15} /> {dirty ? "Guardar" : "Guardado"}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => doRender(true)}
-              loading={renderingType === "preview"}
-              disabled={renderBusy}
-            >
-              <Eye size={15} /> Preview
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => doRender(false)}
-              loading={renderingType === "final"}
-              disabled={renderBusy}
-            >
-              <Download size={15} /> Render final
-            </Button>
-          </div>
-        }
+      <EditorHeader
+        edit={edit}
+        totalDuration={totalDuration}
+        dirty={dirty}
+        saving={saving}
+        renderingType={renderingType}
+        renderJob={renderJob}
+        rendered={rendered}
+        renderStale={renderStale}
+        pastLength={past.length}
+        futureLength={future.length}
+        onUndo={undo}
+        onRedo={redo}
+        onSave={save}
+        onPreview={() => doRender(true)}
+        onRenderFinal={() => doRender(false)}
+        onEditSelect={setSelectedEdit}
       />
 
       {edits.length > 1 && (
@@ -615,525 +555,98 @@ export function EditorScreen() {
         </div>
       )}
 
-      {/* Preview + timeline */}
       <Card className="overflow-hidden">
         <div className="grid lg:grid-cols-[1fr_300px]">
-          <div className="relative flex min-h-[280px] items-center justify-center bg-black/50 p-3">
-            <video
-              ref={videoRef}
-              key={videoSrc}
-              src={videoSrc}
-              className="max-h-[46vh] w-full rounded-lg object-contain"
-              controls
-              playsInline
-              onTimeUpdate={(event) => {
-                const current = event.currentTarget.currentTime;
-                if (usingRender) {
-                  setPlayhead(clamp(current, 0, timelineDuration));
-                } else {
-                  const mapped = sourceToTimeline(segments, current);
-                  if (mapped !== null) setPlayhead(mapped);
-                }
-              }}
-              onPlay={() => setPlaying(true)}
-              onPause={() => setPlaying(false)}
-              onLoadedMetadata={(event) => {
-                event.currentTarget.currentTime = usingRender
-                  ? clamp(playhead, 0, timelineDuration)
-                  : timelineToSource(segments, playhead);
-              }}
+          <div>
+            <EditorPreview
+              edit={edit}
+              projectId={project.id}
+              timelineDuration={timelineDuration}
+              usingRender={usingRender}
+              renderStale={renderStale}
+              dirty={dirty}
+              rendered={rendered}
+              playhead={playhead}
+              playing={playing}
+              totalDuration={totalDuration}
+              segments={segments}
+              renderBusy={renderBusy}
+              renderJob={renderJob}
+              videoSrc={videoSrc}
+              videoRef={videoRef}
+              onTogglePlay={togglePlay}
+              onSeek={seekTo}
+              onVideoTimeUpdate={handleVideoTimeUpdate}
+              onVideoLoadedMetadata={handleVideoLoadedMetadata}
             />
-            <div className="absolute left-4 top-4 flex flex-wrap gap-1.5">
-              <Badge tone={usingRender ? (renderStale ? "warning" : "success") : "warning"}>
-                {usingRender ? (
-                  <>
-                    <Check size={10} />{" "}
-                    {renderStale
-                      ? "render desactualizado"
-                      : rendered?.type === "preview"
-                        ? "preview real"
-                        : "render final"}
-                  </>
-                ) : (
-                  <>
-                    <Film size={10} /> máster original
-                  </>
-                )}
-              </Badge>
-              {dirty && <Badge tone="accent">cambios sin guardar</Badge>}
-            </div>
-            {!usingRender && (
-              <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white/50 backdrop-blur">
-                Estás viendo el máster normalizado: el cursor se mapea al metraje de origen.
-                Renderiza una preview para ver el montaje real.
-              </p>
-            )}
-            {usingRender && (renderStale || dirty) && (
-              <p className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-amber-500/15 px-3 py-1.5 text-[10px] text-amber-100/80 backdrop-blur">
-                {dirty
-                  ? "Hay cambios sin guardar: esta preview no los incluye."
-                  : "Esta preview se generó antes de los últimos cambios guardados."}
-              </p>
-            )}
           </div>
 
-          <div className="space-y-3 border-t border-white/[0.06] p-4 lg:border-l lg:border-t-0">
-            <div className="flex items-center justify-between">
-              <p className="panel-title">Reproducción</p>
-              <button
-                onClick={togglePlay}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-lime/30 bg-lime/10 text-lime transition hover:bg-lime/20"
-                aria-label={playing ? "Pausa" : "Play"}
-              >
-                {playing ? <Pause size={15} /> : <Play size={15} className="ml-0.5" />}
-              </button>
-            </div>
-            <div className="flex items-baseline gap-1 font-mono">
-              <span className="text-2xl font-semibold text-white">{formatTime(playhead, true)}</span>
-              <span className="text-xs text-white/30">/ {formatTime(totalDuration)}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                <p className="text-white/30">Segmentos</p>
-                <p className="font-mono text-white/80">{doc.segments.length}</p>
-              </div>
-              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                <p className="text-white/30">Cortes/s</p>
-                <p className="font-mono text-white/80">
-                  {(doc.segments.length / Math.max(0.1, totalDuration)).toFixed(2)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                <p className="text-white/30">Escenas</p>
-                <p className="font-mono text-white/80">
-                  {new Set(doc.segments.map((segment) => segment.scene_id)).size}
-                </p>
-              </div>
-              <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                <p className="text-white/30">Salida</p>
-                <p className="font-mono text-white/80">
-                  {edit.width}×{edit.height}
-                </p>
-              </div>
-            </div>
-            {rendered && (
-              <a
-                href={downloadUrl(project.id, rendered.id)}
-                download
-                className="btn btn-ghost w-full px-3 py-2 text-xs"
-              >
-                <Download size={13} /> Descargar {rendered.type === "preview" ? "preview" : "MP4"}
-              </a>
-            )}
-            {renderBusy && renderJob && (
-              <div className="rounded-lg border border-accent/20 bg-accent/[0.05] px-3 py-2">
-                <p className="text-[10px] text-white/45">
-                  {stageLabel(renderJob.stage)} · {Math.round(renderJob.progress * 100)}%
-                </p>
-                <ProgressBar value={renderJob.progress} height="h-1" className="mt-1.5" />
-              </div>
-            )}
+          <div className="border-t border-white/[0.06] p-4 lg:border-l lg:border-t-0">
+            <EditorTimeline
+              segments={segments}
+              duration={timelineDuration}
+              masterDuration={masterDuration}
+              playhead={playhead}
+              selectedId={selectedId}
+              accent={accent}
+              onSelect={selectSegment}
+              onSeek={seekTo}
+              onBeginInteraction={pushHistory}
+              onChange={setSegments}
+              onSplit={splitSelected}
+              onDuplicate={duplicateSelected}
+              onRemove={removeSelected}
+              hasSelection={!!selected}
+            />
           </div>
         </div>
 
-        <div className="border-t border-white/[0.06] p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="panel-title">Timeline</p>
-            <div className="flex items-center gap-1.5">
-              <Button size="sm" variant="quiet" onClick={splitSelected} title="Dividir en el cursor">
-                <Split size={13} /> Dividir
-              </Button>
-              <Button size="sm" variant="quiet" onClick={duplicateSelected}>
-                <Copy size={13} /> Duplicar
-              </Button>
-              <Button size="sm" variant="quiet" onClick={removeSelected}>
-                <Trash2 size={13} /> Eliminar
-              </Button>
-            </div>
-          </div>
-          <Timeline
-            segments={doc.segments}
-            duration={timelineDuration}
-            masterDuration={masterDuration}
-            playhead={playhead}
-            selectedId={selectedId}
-            accent={accent}
-            onSelect={selectSegment}
-            onSeek={seekTo}
-            onBeginInteraction={pushHistory}
-            onChange={setSegments}
-          />
-        </div>
+        <EditorInspector
+          edit={edit}
+          doc={doc}
+          selectedId={selectedId}
+          selectedIndex={selectedIndex}
+          totalDuration={totalDuration}
+          targetDuration={targetDuration}
+          masterDuration={masterDuration}
+          timelineDuration={timelineDuration}
+          accent={accent}
+          lyricsLines={lyricsLines}
+          lyricsStyle={lyricsStyle}
+          lyricsEnabled={lyricsEnabled}
+          tab={tab}
+          setTab={setTab}
+          onUpdateSelected={updateSelected}
+          onMoveSelected={moveSelected}
+          onUpdateDoc={updateDoc}
+          onResetEffects={resetEffects}
+          onSaveLyrics={saveLyrics}
+          savingLyrics={savingLyrics}
+          lyricsPresets={lyricPresets}
+          animations={animations}
+          fonts={fonts}
+          onChangeLyricsLines={setLyricsLines}
+          onChangeLyricsStyle={setLyricsStyle}
+          onChangeLyricsEnabled={setLyricsEnabled}
+        />
       </Card>
 
       <div className="grid gap-5 xl:grid-cols-[1.55fr_1fr]">
-        <Card className="p-4 sm:p-5">
-          <div className="mb-4 flex gap-1 rounded-xl border border-white/10 bg-black/20 p-1">
-            {(
-              [
-                ["timeline", "Montaje", <Scissors key="t" size={14} />],
-                ["effects", "Efectos", <SlidersHorizontal key="e" size={14} />],
-                ["lyrics", "Letras", <Captions key="l" size={14} />],
-              ] as Array<[Tab, string, React.ReactNode]>
-            ).map(([id, label, icon]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition",
-                  tab === id ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70",
-                )}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {tab === "timeline" && (
-            <div className="space-y-4">
-              {!selected && (
-                <p className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center text-xs text-white/30">
-                  Selecciona un bloque en la timeline.
-                </p>
-              )}
-              {selected && (
-                <>
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3.5 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white/85">
-                        Segmento {selectedIndex + 1} · {selected.scene_id}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-white/35">
-                        Escena {selected.scene_start.toFixed(2)}–{selected.scene_end.toFixed(2)}s ·{" "}
-                        {selected.cut_type}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="quiet"
-                        onClick={() => moveSelected(-1)}
-                        disabled={selectedIndex === 0}
-                      >
-                        <ChevronLeft size={14} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="quiet"
-                        onClick={() => moveSelected(1)}
-                        disabled={selectedIndex === doc.segments.length - 1}
-                      >
-                        <ChevronRight size={14} />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="text-[11px] text-white/40">
-                      Entrada en el máster (s)
-                      <input
-                        type="number"
-                        min={0}
-                        max={Math.max(0, masterDuration - selected.source_duration)}
-                        step={0.05}
-                        value={Number(selected.source_start.toFixed(3))}
-                        onFocus={pushHistory}
-                        onChange={(event) => {
-                          const value = clamp(
-                            Number(event.target.value),
-                            0,
-                            Math.max(0, masterDuration - selected.source_duration),
-                          );
-                          updateSelected({
-                            source_start: value,
-                            source_end: value + selected.source_duration,
-                          });
-                        }}
-                        className="field mt-1 py-1.5 text-xs"
-                      />
-                    </label>
-                    <label className="text-[11px] text-white/40">
-                      Duración en el clip (s)
-                      <input
-                        type="number"
-                        min={0.12}
-                        max={Math.max(
-                          0.2,
-                          Math.min(
-                            masterDuration - selected.source_start,
-                            targetDuration - (totalDuration - selected.duration),
-                          ),
-                        )}
-                        step={0.05}
-                        value={Number(selected.duration.toFixed(3))}
-                        onFocus={pushHistory}
-                        onChange={(event) => {
-                          const value = clamp(
-                            Number(event.target.value),
-                            0.12,
-                            Math.max(
-                              0.12,
-                              Math.min(
-                                masterDuration - selected.source_start,
-                                targetDuration - (totalDuration - selected.duration),
-                              ),
-                            ),
-                          );
-                          updateSelected({
-                            duration: value,
-                            source_duration: Math.max(value, selected.source_duration),
-                          });
-                        }}
-                        className="field mt-1 py-1.5 text-xs"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-[11px]">
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                      <p className="text-white/30">Timeline</p>
-                      <p className="font-mono text-white/75">
-                        {formatTime(selected.timeline_start)} – {formatTime(selected.timeline_end)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                      <p className="text-white/30">Máster</p>
-                      <p className="font-mono text-white/75">
-                        {selected.source_start.toFixed(2)} – {selected.source_end.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2">
-                      <p className="text-white/30">Transición</p>
-                      <p className="font-mono text-white/75">{selected.transition}</p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2.5 text-[10px] leading-relaxed text-white/30">
-                    Los cambios se aplican al EDL. Al guardar, el backend revalida que cada segmento
-                    quepa en el máster. La duración del montaje es la suma de sus segmentos y no
-                    puede superar el fragmento de audio ({formatTime(targetDuration)}).
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {tab === "effects" && (
-            <div className="space-y-5">
-              <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="panel-title">Color</p>
-                  <span className="text-[10px] text-white/25">grade real con eq</span>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <LabeledSlider
-                    label="Contraste"
-                    value={Number(doc.grade.contrast ?? 1)}
-                    min={0.5}
-                    max={1.6}
-                    onFocus={pushHistory}
-                    onChange={(value) => {
-                      updateDoc({ ...doc, grade: { ...doc.grade, contrast: value } });
-                    }}
-                  />
-                  <LabeledSlider
-                    label="Saturación"
-                    value={Number(doc.grade.saturation ?? 1)}
-                    min={0}
-                    max={2}
-                    onFocus={pushHistory}
-                    onChange={(value) => {
-                      updateDoc({ ...doc, grade: { ...doc.grade, saturation: value } });
-                    }}
-                  />
-                  <LabeledSlider
-                    label="Brillo"
-                    value={Number(doc.grade.brightness ?? 0)}
-                    min={-0.4}
-                    max={0.4}
-                    onFocus={pushHistory}
-                    onChange={(value) => {
-                      updateDoc({ ...doc, grade: { ...doc.grade, brightness: value } });
-                    }}
-                  />
-                  <LabeledSlider
-                    label="Volumen"
-                    value={doc.volume}
-                    min={0}
-                    max={2}
-                    onFocus={pushHistory}
-                    onChange={(value) => updateDoc({ ...doc, volume: value })}
-                    format={(value) => `${Math.round(value * 100)}%`}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-white/[0.06] pt-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="panel-title">Efectos visuales</p>
-                  <Button size="sm" variant="quiet" onClick={resetEffects}>
-                    <RotateCcw size={12} /> Neutro
-                  </Button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {[
-                    ["sharpen", "Nitidez", 0, 1],
-                    ["vignette", "Viñeta", 0, 1],
-                    ["grain", "Grano", 0, 1],
-                    ["glow", "Glow", 0, 1],
-                    ["rgb_split", "RGB split", 0, 1],
-                  ].map(([key, label, min, max]) => (
-                    <div key={key as string} className={cn(!allowed(key as string) && "opacity-40")}>
-                      <LabeledSlider
-                        label={`${label}${!allowed(key as string) ? " · no permitido" : ""}`}
-                        value={Number(doc.effects[key as string] ?? 0)}
-                        min={Number(min)}
-                        max={Number(max)}
-                        onFocus={pushHistory}
-                        onChange={(value) => {
-                          if (!allowed(key as string)) return;
-                          updateDoc({ ...doc, effects: { ...doc.effects, [key as string]: value } });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <p className="rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[10px] leading-relaxed text-white/30">
-                Los límites de efectos los define el estilo del EDL. Guarda antes de renderizar: el
-                render usa el EDL persistido, no el estado local.
-              </p>
-            </div>
-          )}
-
-          {tab === "lyrics" && lyricsStyle && (
-            <div className="space-y-4">
-              <LyricsEditor
-                projectId={project.id}
-                duration={totalDuration}
-                lines={lyricsLines}
-                style={lyricsStyle}
-                enabled={lyricsEnabled}
-                presets={lyricPresets}
-                animations={animations}
-                fonts={fonts}
-                onChangeLines={setLyricsLines}
-                onChangeStyle={setLyricsStyle}
-                onChangeEnabled={setLyricsEnabled}
-              />
-              <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-4">
-                <Button variant="primary" onClick={saveLyrics} loading={savingLyrics}>
-                  <Save size={15} /> Guardar letras
-                </Button>
-                <span className="text-[10px] text-white/30">
-                  Se queman con libass en la preview y en el render final.
-                </span>
-              </div>
-            </div>
-          )}
-        </Card>
-
-        <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
-          <Card className="p-4 sm:p-5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-lime/20 bg-lime/[0.07] text-lime">
-                <Zap size={16} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white/85">Render</p>
-                <p className="text-[11px] text-white/35">MP4 H.264 + AAC, validado con ffprobe</p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => doRender(true)}
-                loading={renderingType === "preview"}
-                disabled={renderBusy}
-              >
-                <Eye size={15} /> Preview a media resolución
-              </Button>
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={() => doRender(false)}
-                loading={renderingType === "final"}
-                disabled={renderBusy}
-              >
-                <Download size={15} /> Render final
-              </Button>
-            </div>
-            <div className="mt-3 space-y-1.5 text-[10px] text-white/30">
-              <p className="flex items-center justify-between">
-                <span>Calidad</span>
-                <span className="text-white/55">{project.config.quality}</span>
-              </p>
-              <p className="flex items-center justify-between">
-                <span>Encoder</span>
-                <span className="text-white/55">{project.config.encoder}</span>
-              </p>
-              <p className="flex items-center justify-between">
-                <span>Salida</span>
-                <span className="text-white/55">
-                  {edit.width}×{edit.height} · {edit.fps}fps
-                </span>
-              </p>
-            </div>
-            {rendered && (
-              <div className="mt-3 rounded-lg border border-emerald-400/15 bg-emerald-400/[0.04] px-3 py-2 text-[10px] text-emerald-200/75">
-                {rendered.type === "preview" ? "Preview" : "Final"} lista ·{" "}
-                {formatBytes(rendered.size)} · {rendered.validation.ok ? "validada" : "revisar"}
-              </div>
-            )}
-          </Card>
-
-          <Card className="p-4 sm:p-5">
-            <div className="flex items-center gap-2">
-              <History size={14} className="text-white/40" />
-              <p className="panel-title">Historial</p>
-            </div>
-            <div className="mt-3 space-y-1.5 text-[11px] text-white/40">
-              <p className="flex items-center justify-between">
-                <span>Deshacer</span>
-                <span className="font-mono text-white/60">{past.length}</span>
-              </p>
-              <p className="flex items-center justify-between">
-                <span>Rehacer</span>
-                <span className="font-mono text-white/60">{future.length}</span>
-              </p>
-              <p className="flex items-center justify-between">
-                <span>Estado</span>
-                <span className={dirty ? "text-amber-300" : "text-emerald-300"}>
-                  {dirty ? "sin guardar" : "guardado"}
-                </span>
-              </p>
-            </div>
-            <div className="mt-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[10px] leading-relaxed text-white/30">
-              Ctrl+Z deshacer · Ctrl+Y rehacer · Espacio reproducir. El historial es local a esta
-              sesión de edición.
-            </div>
-          </Card>
-
-          <Card className="p-4 sm:p-5">
-            <p className="panel-title">Consejos de montaje</p>
-            <ul className="mt-3 space-y-2 text-[11px] leading-relaxed text-white/35">
-              <li className="flex gap-2">
-                <Wand2 size={12} className="mt-0.5 shrink-0 text-lime/60" />
-                Mantén cortes de 0,5–2 s en estilos rápidos y de 2–5 s en cinemáticos.
-              </li>
-              <li className="flex gap-2">
-                <Clapperboard size={12} className="mt-0.5 shrink-0 text-cyan/60" />
-                Reutiliza escenas con moderación: el planificador penaliza la repetición.
-              </li>
-              <li className="flex gap-2">
-                <Volume2 size={12} className="mt-0.5 shrink-0 text-accent/60" />
-                El audio se normaliza a −14 LUFS, el estándar de plataformas.
-              </li>
-            </ul>
-          </Card>
-        </div>
+        <div className="xl:col-span-1" />
+        <EditorSidebar
+          projectId={project.id}
+          edit={edit}
+          project={project}
+          rendered={rendered}
+          renderingType={renderingType}
+          renderJob={renderJob}
+          renderBusy={renderBusy}
+          dirty={dirty}
+          pastLength={past.length}
+          futureLength={future.length}
+          onPreview={() => doRender(true)}
+          onRenderFinal={() => doRender(false)}
+        />
       </div>
     </div>
   );
