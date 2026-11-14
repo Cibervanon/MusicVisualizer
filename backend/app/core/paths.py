@@ -38,9 +38,9 @@ def project_dir(project_id: str) -> Path:
 
     Evita cualquier intento de salir del directorio de proyectos.
     """
-    if not project_id or not project_id.isalnum() and not all(
+    if not project_id or (not project_id.isalnum() and not all(
         c.isalnum() or c in "-_" for c in project_id
-    ):
+    )):
         raise ValueError(f"project_id inválido: {project_id!r}")
     path = (PROJECTS_DIR / project_id).resolve()
     if PROJECTS_DIR.resolve() not in path.parents:

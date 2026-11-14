@@ -7,8 +7,9 @@ contra este máster con búsquedas rápidas (keyframe cada 0,5 s).
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from ..core.ffmpeg import probe, run_ffmpeg
 from ..core.paths import project_layout
@@ -32,13 +33,13 @@ def target_dims(fmt: str, resolution: str) -> tuple[int, int]:
     aspect_w, aspect_h = FORMAT_ASPECTS.get(fmt, (9, 16))
     if aspect_w >= aspect_h:
         width = height
-        out_h = int(round(width * aspect_h / aspect_w))
+        out_h = round(width * aspect_h / aspect_w)
     else:
         out_h = height
-        width = int(round(out_h * aspect_w / aspect_h))
+        width = round(out_h * aspect_w / aspect_h)
     # Múltiplos de 2 obligatorios para yuv420p.
-    width = max(2, int(round(width / 2)) * 2)
-    out_h = max(2, int(round(out_h / 2)) * 2)
+    width = max(2, round(width / 2) * 2)
+    out_h = max(2, round(out_h / 2) * 2)
     return width, out_h
 
 

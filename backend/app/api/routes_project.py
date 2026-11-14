@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 
 from ..core.errors import NotFoundError, ValidationError
 from ..core.paths import project_layout
@@ -18,7 +18,6 @@ from ..project.manager import (
     list_projects,
     load_project,
     mutate_project,
-    save_project,
 )
 from .common import project_payload
 
@@ -129,16 +128,16 @@ async def edit_patch(project_id: str, edit_id: str, body: EditPatch) -> dict[str
         for index, segment in enumerate(segments):
             try:
                 duration = float(segment.get("duration") or 0)
-            except (TypeError, ValueError):
-                raise ValidationError(f"Segmento {index} sin duración válida.")
+            except (TypeError, ValueError) as e:
+                raise ValidationError(f"Segmento {index} sin duración válida.") from e
             if duration < 0.12:
                 raise ValidationError(f"El segmento {index} es demasiado corto.")
             need = duration + (extra if index > 0 else 0.0)
             try:
                 source_start = float(segment.get("source_start") or 0)
                 source_end = float(segment.get("source_end") or source_start + need)
-            except (TypeError, ValueError):
-                raise ValidationError(f"Segmento {index} con tiempos de origen inválidos.")
+            except (TypeError, ValueError) as e:
+                raise ValidationError(f"Segmento {index} con tiempos de origen inválidos.") from e
             # Nunca salir del plano de origen declarado ni del máster.
             scene_start = segment.get("scene_start")
             scene_end = segment.get("scene_end")

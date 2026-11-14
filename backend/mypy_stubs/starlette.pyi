@@ -1,0 +1,33 @@
+# Stub for starlette
+class BackgroundTask:
+    def __init__(self, func: Callable, *args: Any, **kwargs: Any) -> None: ...
+
+class Response:
+    pass
+
+class FileResponse:
+    def __init__(self, path: str, media_type: str = None, headers: dict = None, filename: str = None) -> None: ...
+
+class JSONResponse:
+    def __init__(self, content: Any, status_code: int = 200, headers: dict = None) -> None: ...
+
+class RedirectResponse:
+    def __init__(self, url: str, status_code: int = 307) -> None: ...
+
+class StreamingResponse:
+    def __init__(self, content: Any, media_type: str = None) -> None: ...
+
+class HTMLResponse:
+    def __init__(self, content: str, status_code: int = 200) -> None: ...
+
+class PlainTextResponse:
+    def __init__(self, content: str, status_code: int = 200) -> None: ...
+
+class UJSONResponse:
+    def __init__(self, content: Any, status_code: int = 200, headers: dict = None) -> None: ...
+
+class ORJSONResponse:
+    def __init__(self, content: Any, status_code: int = 200, headers: dict = None) -> None: ...
+
+class Response:
+    def __init__(self, content: Any, status_code: int = 200, headers: dict = None, media_type: str = None) -> None: ...

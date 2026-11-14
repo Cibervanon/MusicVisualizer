@@ -16,9 +16,11 @@ Progreso:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from ..core.errors import ProcessingError
 from ..core.ffmpeg import (
@@ -43,7 +45,7 @@ QUALITY_PRESETS = {
 
 
 def _even(value: float) -> int:
-    return max(2, int(round(value / 2)) * 2)
+    return max(2, round(value / 2) * 2)
 
 
 def _preview_dims(width: int, height: int) -> tuple[int, int]:
@@ -110,10 +112,7 @@ def _build_graph(
         # En un corte, el input debe durar exactamente el plano. `source_duration`
         # puede ser mayor (margen de crossfade o una edición manual): si se dejaba
         # entero, concat alargaba el montaje y el audio/vídeo se desincronizaban.
-        if transition == "crossfade" and index > 0:
-            trim_duration = max(shot, source_duration)
-        else:
-            trim_duration = max(0.04, shot)
+        trim_duration = max(shot, source_duration) if transition == "crossfade" and index > 0 else max(0.04, shot)
         filters = [
             f"trim=start=0:end={trim_duration:.4f}",
             "setpts=PTS-STARTPTS",
@@ -158,10 +157,8 @@ def _build_graph(
 
     current = "base2"
     filters = _effect_filters(edl)
-    step = 0
-    for item in filters:
+    for step, item in enumerate(filters):
         label = f"e{step}"
-        step += 1
         if item.startswith("__GLOW__"):
             strength = float(item.replace("__GLOW__", ""))
             sigma = 8.0 + strength * 22.0
@@ -195,7 +192,7 @@ def _build_graph(
 async def _make_thumb(video: Path, thumb: Path, duration: float) -> None:
     thumb.parent.mkdir(parents=True, exist_ok=True)
     at = min(max(0.4, duration * 0.35), max(0.4, duration - 0.2))
-    try:
+    with contextlib.suppress(Exception):
         await asyncio.to_thread(
             run_ffmpeg_sync,
             [
@@ -212,8 +209,6 @@ async def _make_thumb(video: Path, thumb: Path, duration: float) -> None:
                 str(thumb),
             ],
         )
-    except Exception:
-        pass
 
 
 def render_identity(project_id: str, edit_id: str, preview: bool) -> tuple[str, str]:
@@ -360,7 +355,7 @@ async def render_edit(
             cancel_event=cancel_event,
             timeout=None,
         )
-    except ProcessingError as exc:
+    except ProcessingError:
         if encoder == "qsv":
             # Reintento honesto en CPU si el encoder por hardware no está disponible.
             note = "El encoder QSV falló; se re-renderizó en CPU."

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import re
 import uuid
 from typing import Any
@@ -38,7 +39,7 @@ def distribute_words(text: str, start: float, end: float) -> list[dict[str, Any]
     total = sum(weights) or len(words)
     cursor = start
     result: list[dict[str, Any]] = []
-    for index, (word, weight) in enumerate(zip(words, weights)):
+    for index, (word, weight) in enumerate(zip(words, weights, strict=False)):
         duration = span * weight / total
         word_end = end if index == len(words) - 1 else min(end, cursor + duration)
         result.append(
@@ -94,7 +95,7 @@ def normalize_lines(
         )
     cleaned.sort(key=lambda item: item["start"])
     # Elimina solapamientos evidentes manteniendo la legibilidad.
-    for previous, current in zip(cleaned, cleaned[1:]):
+    for previous, current in itertools.pairwise(cleaned):
         if current["start"] < previous["end"] - 0.02:
             previous["end"] = round(max(previous["start"] + 0.1, current["start"] - 0.02), 3)
     return cleaned
@@ -196,7 +197,7 @@ def to_srt(lines: list[dict[str, Any]]) -> str:
         hours = int(seconds // 3600)
         minutes = int((seconds % 3600) // 60)
         secs = int(seconds % 60)
-        ms = int(round((seconds - int(seconds)) * 1000))
+        ms = round((seconds - int(seconds)) * 1000)
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
 
     chunks = []

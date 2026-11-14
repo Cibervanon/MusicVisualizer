@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import time
 import zipfile
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
-from ..core.errors import NotFoundError, ValidationError
+from ..core.errors import NotFoundError
 from ..core.paths import WORK_DIR
 from ..jobs.manager import jobs
 from ..jobs.runners import run_render

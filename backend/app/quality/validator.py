@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import subprocess
 from pathlib import Path
@@ -214,7 +215,7 @@ def _check_keyframes(path: Path, fps: int) -> dict[str, Any]:
     ]
     if len(keyframe_times) < 2:
         return {"max_interval_seconds": 0.0, "keyframe_count": len(keyframe_times)}
-    intervals = [b - a for a, b in zip(keyframe_times, keyframe_times[1:])]
+    intervals = [b - a for a, b in itertools.pairwise(keyframe_times)]
     return {
         "max_interval_seconds": max(intervals) if intervals else 0.0,
         "keyframe_count": len(keyframe_times),

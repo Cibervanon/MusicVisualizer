@@ -5,6 +5,7 @@ Un proyecto = `projects/<id>/project.json` + subcarpetas. No hay base de datos.
 
 from __future__ import annotations
 
+import contextlib
 import re
 import threading
 import time
@@ -192,10 +193,8 @@ def add_render(project_id: str, render: dict[str, Any]) -> dict[str, Any]:
                 old_path = old.get("path")
                 if not old_path or old_path in still_used:
                     continue
-                try:
+                with contextlib.suppress(ValueError, OSError):
                     safe_join(root, old_path).unlink(missing_ok=True)
-                except (ValueError, OSError):
-                    pass
         return render
 
 

@@ -7,6 +7,7 @@ ejecutar sin volver a analizar nada.
 
 from __future__ import annotations
 
+import itertools
 import math
 import random
 from statistics import median
@@ -19,7 +20,7 @@ from .styles import Style, get_style
 def _beat_interval(audio: dict[str, Any]) -> float:
     beats = [float(b["t"]) for b in audio.get("beats", [])]
     if len(beats) >= 3:
-        diffs = [b - a for a, b in zip(beats, beats[1:]) if b - a > 0.05]
+        diffs = [b - a for a, b in itertools.pairwise(beats) if b - a > 0.05]
         if diffs:
             return clamp(float(median(diffs)), 0.18, 2.0)
     bpm = float((audio.get("tempo") or {}).get("bpm") or 120.0)
@@ -53,7 +54,7 @@ def _grid(audio: dict[str, Any], duration: float, style: Style) -> list[float]:
         if 0 <= beat <= duration:
             values.add(round(beat, 4))
     if style.min_shot <= 0.65 and len(beats) > 1:
-        for a, b in zip(beats, beats[1:]):
+        for a, b in itertools.pairwise(beats):
             mid = (a + b) / 2
             if 0 <= mid <= duration:
                 values.add(round(mid, 4))
@@ -124,7 +125,7 @@ def _pick_scene(
     total_p = sum(probabilities) or 1.0
     pick = rng.random() * total_p
     cursor = 0.0
-    for probability, item in zip(probabilities, top):
+    for probability, item in zip(probabilities, top, strict=False):
         cursor += probability
         if pick <= cursor:
             return item[1]
@@ -205,7 +206,7 @@ def _choose_cut(
     total_p = sum(probabilities) or 1.0
     pick = rng.random() * total_p
     cursor = 0.0
-    for probability, item in zip(probabilities, top):
+    for probability, item in zip(probabilities, top, strict=False):
         cursor += probability
         if pick <= cursor:
             return item[1], item[2], item[3]

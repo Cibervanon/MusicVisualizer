@@ -11,8 +11,8 @@ from ..core.paths import project_layout
 from ..core.util import read_json, write_json
 from ..project.manager import load_project, mutate_project
 from .ass_builder import write_ass
-from .presets import default_style, merge_style
 from .parser import normalize_lines
+from .presets import default_style, merge_style
 
 
 def empty_lyrics() -> dict[str, Any]:

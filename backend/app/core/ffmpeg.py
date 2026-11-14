@@ -13,9 +13,10 @@ import json
 import os
 import shutil
 import subprocess
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from .errors import ProcessingError
 
@@ -43,6 +44,7 @@ class MediaInfo:
     has_video: bool = False
     has_audio: bool = False
     format_name: str = ""
+    color_space: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -263,13 +265,13 @@ async def run_ffmpeg(
             proc.terminate()
             try:
                 await asyncio.wait_for(proc.wait(), timeout=4)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
 
     cancel_task = asyncio.create_task(watch_cancel()) if cancel_event is not None else None
     try:
         await asyncio.wait_for(proc.wait(), timeout=timeout) if timeout else await proc.wait()
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         proc.kill()
         raise ProcessingError("FFmpeg excedió el tiempo máximo permitido.") from exc
     finally:

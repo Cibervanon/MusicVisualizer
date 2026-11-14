@@ -69,9 +69,8 @@ class ProjectCase(unittest.TestCase):
 class PathSafetyTests(ProjectCase):
     def test_edit_path_rejects_traversal(self) -> None:
         for bad in ("../../project", "..\\..\\project", "edit/../../x", "", ".hidden"):
-            with self.subTest(bad=bad):
-                with self.assertRaises(ValidationError):
-                    edit_path(self.project["id"], bad)
+            with self.subTest(bad=bad), self.assertRaises(ValidationError):
+                edit_path(self.project["id"], bad)
 
     def test_edit_path_accepts_normal_id(self) -> None:
         layout = project_layout(self.project["id"])

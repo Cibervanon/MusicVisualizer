@@ -16,7 +16,6 @@ from fastapi import APIRouter, File, Form, UploadFile
 from ..core.errors import ProcessingError, ValidationError
 from ..core.ffmpeg import CREATE_NO_WINDOW, probe
 from ..core.paths import project_layout
-from ..core.util import safe_filename
 from ..models.schemas import YouTubeImport, YouTubePreflight
 from ..project.manager import load_project, mutate_project
 from .common import AUDIO_EXT, VIDEO_EXT, project_payload, rel, safe_source_name, save_upload

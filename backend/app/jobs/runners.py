@@ -129,7 +129,7 @@ async def _ensure_video(
     progress_span: float = 0.26,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     project_id = project["id"]
-    layout = project_layout(project_id)
+    project_layout(project_id)
     source = validate_video_source(project)
     cancel_event = await jobs.event(job_id)
 

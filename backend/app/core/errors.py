@@ -44,8 +44,8 @@ class ValidationError(AppError):
 
 
 class ProcessingError(AppError):
-    def __init__(self, message: str, detail: Any = None) -> None:
-        super().__init__(message, code="processing_error", status_code=500, detail=detail)
+    def __init__(self, message: str, detail: Any = None, code: str = "processing_error") -> None:
+        super().__init__(message, code=code, status_code=500, detail=detail)
 
 
 def error_payload(code: str, message: str, detail: Any = None) -> dict[str, Any]:

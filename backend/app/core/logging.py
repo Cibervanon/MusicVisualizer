@@ -39,7 +39,7 @@ class JSONFormatter(logging.Formatter):
         extra = {k: v for k, v in record.__dict__.items() if k not in {
             "name", "msg", "args", "created", "filename", "funcName",
             "levelname", "levelno", "lineno", "module", "msecs",
-            "message", "msg", "name", "pathname", "process",
+            "message", "pathname", "process",
             "processName", "relativeCreated", "thread", "threadName",
             "exc_info", "exc_text", "stack_info",
         }}

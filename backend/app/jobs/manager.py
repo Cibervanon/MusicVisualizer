@@ -7,7 +7,8 @@ import json
 import time
 import traceback
 import uuid
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from ..core.errors import AppError, ProcessingError
 from ..core.logging import get_logger, log_job_transition, set_job_id
@@ -70,7 +71,7 @@ class JobStore:
             job = self._jobs.get(job_id)
             if job is None:
                 raise AppError("Trabajo no encontrado.", code="job_not_found", status_code=404)
-            old_status = job.get("status")
+            job.get("status")
             for key, value in fields.items():
                 if key == "status":
                     current = job.get("status")
@@ -82,7 +83,7 @@ class JobStore:
                     if current == "cancelling" and value in {"queued", "running", "done"}:
                         continue
                     if current != value:
-                        log_job_transition(_logger, job_id, current, value)
+                        log_job_transition(_logger, job_id, current or "unknown", value)
                 job[key] = value
             if fields.get("message"):
                 job.setdefault("logs", []).append(

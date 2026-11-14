@@ -8,6 +8,7 @@ devuelve una rejilla honesta con confianza baja.
 from __future__ import annotations
 
 import asyncio
+import itertools
 import math
 from pathlib import Path
 from typing import Any
@@ -290,7 +291,7 @@ def analyze_audio_file(mono_path: str | Path, expected_duration: float | None = 
 
     beat_objects: list[dict[str, Any]] = []
     for index, (beat_time, (lo, hi), strength) in enumerate(
-        zip(beats, windows, strengths)
+        zip(beats, windows, strengths, strict=False)
     ):
         band_values = {
             name: round(float(np.mean(values[lo:hi])) if hi > lo else float(values[int(lo)]), 4)
@@ -345,7 +346,7 @@ def analyze_audio_file(mono_path: str | Path, expected_duration: float | None = 
         boundaries.append(n_frames - 1)
 
     raw_sections: list[dict[str, Any]] = []
-    for start_frame, end_frame in zip(boundaries[:-1], boundaries[1:]):
+    for start_frame, end_frame in itertools.pairwise(boundaries):
         if end_frame <= start_frame:
             continue
         start_t = float(times[min(start_frame, len(times) - 1)])

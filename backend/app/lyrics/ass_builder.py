@@ -13,7 +13,7 @@ from ..core.util import clamp
 
 
 def _ass_time(seconds: float) -> str:
-    total_cs = max(0, int(round(float(seconds) * 100)))
+    total_cs = max(0, round(float(seconds) * 100))
     hours, rem = divmod(total_cs, 360000)
     minutes, rem = divmod(rem, 6000)
     secs, cs = divmod(rem, 100)
@@ -31,7 +31,7 @@ def _hex_to_bgr(color: str) -> str:
 
 
 def _alpha(opacity: float) -> int:
-    return int(round(clamp(1.0 - float(opacity), 0.0, 1.0) * 255))
+    return round(clamp(1.0 - float(opacity), 0.0, 1.0) * 255)
 
 
 def _wrap(text: str, width: int, font_size: float) -> str:
@@ -129,7 +129,7 @@ def _anim_tags(
 def _karaoke_text(words: list[dict[str, Any]]) -> str:
     chunks: list[str] = []
     for word in words:
-        duration_cs = max(1, int(round((float(word["end"]) - float(word["start"])) * 100)))
+        duration_cs = max(1, round((float(word["end"]) - float(word["start"])) * 100))
         chunks.append(rf"{{\kf{duration_cs}}}{_escape(str(word['text']))}")
     return " ".join(chunks)
 
@@ -158,7 +158,7 @@ def build_ass(
     primary = _hex_to_bgr(style.get("color") or "#FFFFFF")
     active = _hex_to_bgr(style.get("active_color") or style.get("color") or "#FFFFFF")
     outline_color = _hex_to_bgr(style.get("outline_color") or "#000000")
-    shadow_color = _hex_to_bgr(style.get("shadow_color") or "#000000")
+    _hex_to_bgr(style.get("shadow_color") or "#000000")
     back_color = _hex_to_bgr(style.get("background_color") or "#000000")
     back_alpha = _alpha(float(style.get("background_opacity") or 0.0))
     background = bool(style.get("background"))

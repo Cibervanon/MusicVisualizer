@@ -54,7 +54,7 @@ def detect_scenes(master_path: str | Path, fps: float, duration: float) -> tuple
     if len(scenes) <= 1 and duration > 2.0:
         fallback = True
         chunk = 3.5
-        count = max(1, int(math.ceil(duration / chunk)))
+        count = max(1, math.ceil(duration / chunk))
         scenes = [
             {"start": i * chunk, "end": min(duration, (i + 1) * chunk)}
             for i in range(count)
@@ -134,7 +134,7 @@ def analyze_video_file(
     real_fps = float(cap.get(cv2.CAP_PROP_FPS) or fps or 30.0)
 
     sample_count_target = int(min(MAX_SAMPLES, max(24, duration * SAMPLE_FPS)))
-    step = max(1, int(round(total_frames / sample_count_target))) if total_frames > 0 else 1
+    step = max(1, round(total_frames / sample_count_target)) if total_frames > 0 else 1
 
     samples: list[dict[str, float]] = []
     previous_small: np.ndarray | None = None

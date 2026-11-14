@@ -1,0 +1,45 @@
+[project]
+name = "music-clip-studio"
+version = "0.1.0"
+description = "AI Music Clip Studio"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "T20", # flake8-print
+    "PTH", # flake8-use-pathlib
+    "RUF", # ruff-specific rules
+    "ARG", # flake8-unused-arguments
+    "ERA", # eradicate (commented code)
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # function argument defaults to mutable
+    "SIM103", # return boolean in if/else
+    "ARG001", # unused argument (used in callbacks)
+    "ARG002", # unused argument (used in callbacks)
+]
+per-file-ignores = { "tests/*" = ["S101", "ARG001", "ARG002"], "app/main.py" = ["S101"] }
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = true
+
+[tool.mypy]
+config_file = "mypy.ini"
