@@ -6,14 +6,14 @@
 **Description:** Decompose the 1140-line EditorScreen.tsx into focused components under `src/components/editor/`: `EditorHeader`, `EditorPreview`, `EditorTimeline`, `EditorInspector`, `EditorTabs`, `EditorSidebar`. Each component should have a single responsibility.
 
 **Acceptance criteria:**
-- [x] EditorScreen.tsx < 300 lines (orchestration only)
+- [ ] EditorScreen.tsx < 300 lines (orchestration only) — actual: 652 líneas; los 6 componentes ya están extraídos, queda mover lógica a hooks
 - [x] New components in `src/components/editor/`
 - [x] All existing functionality preserved
 - [x] Tests pass
 
 **Verification:**
 - [x] `npm run build` succeeds
-- [x] `npm test` passes (13/13)
+- [x] `npm test` passes (21/21)
 - [x] Manual: open editor, edit timeline, save, render preview
 
 **Dependencies:** None
@@ -38,8 +38,8 @@
 
 **Verification:**
 - [x] `npm run build` succeeds
-- [x] `npm test` passes (13/13)
-- [x] Backend tests pass (14/14)
+- [x] `npm test` passes (21/21)
+- [x] Backend tests pass (22/22)
 
 **Dependencies:** None
 
@@ -64,8 +64,8 @@
 
 **Verification:**
 - [x] `npm run build` succeeds (tsc --noEmit passes)
-- [x] `npm test` passes (13/13)
-- [x] Backend tests pass (14/14)
+- [x] `npm test` passes (21/21)
+- [x] Backend tests pass (22/22)
 
 **Dependencies:** Task 1 (easier after split)
 
@@ -90,7 +90,7 @@
 
 **Verification:**
 - [x] Start backend, make request, verify JSON logs in console
-- [x] `python -m unittest discover -s tests` passes (14/14)
+- [x] `python -m unittest discover -s tests` passes (22/22)
 
 **Dependencies:** None
 
@@ -116,7 +116,7 @@
 - [x] Job status transitions logged with request_id and job_id
 
 **Verification:**
-- [x] `python -m unittest discover -s tests` passes (14/14)
+- [x] `python -m unittest discover -s tests` passes (22/22)
 - [x] Manual: start long render, cancel, verify cleanup
 
 **Dependencies:** Task 4 (logging helps debug)
@@ -131,9 +131,9 @@
 ---
 
 ## Checkpoint: Code Quality
-- [ ] All tests pass (backend 14, frontend 13)
-- [ ] Build succeeds
-- [ ] Editor works end-to-end (manual smoke test)
+- [x] All tests pass (backend 22, frontend 21)
+- [x] Build succeeds
+- [x] Editor works end-to-end (manual smoke test)
 
 ---
 
@@ -147,8 +147,8 @@
 - [x] Clear 400/422 responses with field-level errors
 
 **Verification:**
-- [x] `python -m unittest discover -s tests` passes (14/14)
-- [x] `npm test` passes (13/13)
+- [x] `python -m unittest discover -s tests` passes (22/22)
+- [x] `npm test` passes (21/21)
 - [x] Manual: send invalid JSON to `/api/project/configure`, verify 422
 
 **Dependencies:** Task 2 (Zod schemas)
@@ -171,8 +171,8 @@
 - [x] No raw exception traces in responses
 
 **Verification:**
-- [x] `python -m unittest discover -s tests` passes (14/14)
-- [x] `npm test` passes (13/13)
+- [x] `python -m unittest discover -s tests` passes (22/22)
+- [x] `npm test` passes (21/21)
 - [x] Manual: trigger various errors, verify format
 
 **Dependencies:** Task 6
@@ -348,13 +348,13 @@
 
 ---
 
-### Task 14: Add loading skeletons for all async states ✅ DONE
+### Task 14: Add loading skeletons for all async states 🟡 PARCIAL
 **Description:** Replace all spinner-only loading with content-aware skeletons. Use `Skeleton` component for: project list, edit list, render list, waveform, timeline, preview player. Match final layout dimensions.
 
 **Acceptance criteria:**
 - [x] No layout shift on load
-- [x] Skeletons match content structure
-- [x] Progressive enhancement (show static first)
+- [x] Skeletons en EditorScreen y ResultsScreen (preview, timeline, inspector, lista de clips)
+- [ ] Skeletons en CustomizeScreen y SetupScreen (hoy usan spinners/progreso real)
 - [x] Consistent animation (pulse/shimmer)
 
 **Verification:**
@@ -412,12 +412,12 @@
 - [x] Test: video analysis produces scenes
 - [x] Test: generate_versions creates valid EDLs
 - [x] Test: render_edit produces valid MP4
-- [x] Test: validation catches duration mismatch
-- [x] Tests run in < 60 seconds total
+- [x] Test: validation catches duration mismatch, corrupt, missing and valid files
+- [x] Tests run in < 2 minutes total (22 tests, ~45–105 s según carga de la máquina)
 
 **Verification:**
-- [x] `python -m pytest tests/test_integration.py` passes (6 tests)
-- [x] Coverage > 80% for render/editing modules
+- [x] `python -m pytest tests/test_integration.py` passes (8 tests)
+- [ ] Coverage > 80% for render/editing modules (no medida; no hay coverage configurado)
 
 **Dependencies:** Task 10
 
@@ -504,14 +504,14 @@
 
 ---
 
-### Task 20: Add performance budgets to CI ✅ DONE
+### Task 20: Add performance budgets to CI 🟡 PARCIAL
 **Description:** Add bundle size budget (frontend) and render time budget (backend) to CI. Use `vite-bundle-analyzer` or `vite-bundle-analyzer`. Fail if budget exceeded.
 
 **Acceptance criteria:**
-- [x] Frontend: total JS < 400KB gzipped, CSS < 50KB
-- [x] Backend: render_edit < 30s for 30s clip @ 1080p
+- [x] Frontend: JS < 180 KB gzip, CSS < 20 KB gzip (medido: 142 KB / 8.4 KB)
+- [ ] Backend: render_edit < 30s for 30s clip @ 1080p (no implementado; el test de integración valida correctitud, no tiempo)
 - [x] Budgets enforced in CI
-- [x] Reports uploaded as artifacts
+- [ ] Reports uploaded as artifacts
 
 **Verification:**
 - [x] CI fails on budget exceed
@@ -560,15 +560,15 @@
 
 ---
 
-### Task 22: Add virtualization for large lists
+### Task 22: Add virtualization for large lists 🟡 PARCIAL
 **Description:** Use `react-window` or `tanstack-virtual` for: project list, edit list, render list, lyrics lines. Replace `map` with `FixedSizeList`/`VariableSizeList`.
 
 **Acceptance criteria:**
 - [ ] Project list virtualized (50+ items)
 - [ ] Edit list virtualized
 - [ ] Render list virtualized
-- [ ] Lyrics lines virtualized (100+ lines)
-- [ ] Smooth scrolling, no layout shift
+- [x] Lyrics lines virtualized (100+ lines, react-window v2 `List`)
+- [x] Smooth scrolling, no layout shift
 
 **Verification:**
 - [ ] `npm run build` succeeds
@@ -586,19 +586,19 @@
 
 ---
 
-### Task 23: Improve Timeline rendering performance ✅ DONE
+### Task 23: Improve Timeline rendering performance ⬜ PENDIENTE
 **Description:** Optimize Timeline: use `requestAnimationFrame` for playhead, memoize segment rendering, avoid re-renders on playhead move, use CSS transform for blocks instead of left/width.
 
 **Acceptance criteria:**
-- [x] 60fps playhead animation
-- [x] No re-render of segments on playhead move
-- [x] 500+ segments render smoothly
-- [x] Drag/resize 60fps
+- [ ] 60fps playhead animation (hoy el playhead es un estado de React)
+- [ ] No re-render of segments on playhead move
+- [ ] 500+ segments render smoothly
+- [ ] Drag/resize 60fps
 
 **Verification:**
-- [x] `npm run build` succeeds
-- [x] `npm test` passes
-- [x] Manual: profile with React DevTools, verify no unnecessary renders
+- [ ] `npm run build` succeeds
+- [ ] `npm test` passes
+- [ ] Manual: profile with React DevTools, verify no unnecessary renders
 
 **Dependencies:** Task 1, Task 11
 
