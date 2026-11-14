@@ -456,19 +456,19 @@
 
 ---
 
-### Task 18: Add GitHub Actions CI pipeline
+### Task 18: Add GitHub Actions CI pipeline ✅ DONE
 **Description:** Create `.github/workflows/ci.yml` with jobs: lint, typecheck, test (backend), test (frontend), build, e2e. Cache dependencies. Run on PR and push to main.
 
 **Acceptance criteria:**
-- [ ] Job: backend lint (ruff), typecheck (mypy), test
-- [ ] Job: frontend lint (eslint), typecheck (tsc), test, build
-- [ ] Job: e2e (Playwright) on PR
-- [ ] Artifacts: build outputs, test reports
-- [ ] Required status checks on main branch
+- [x] Job: backend lint (ruff), typecheck (mypy), test
+- [x] Job: frontend lint (eslint), typecheck (tsc), test, build
+- [x] Job: e2e (Playwright) on PR
+- [x] Artifacts: build outputs, test reports
+- [x] Required status checks on main branch
 
 **Verification:**
-- [ ] Push to branch, verify CI runs
-- [ ] PR shows all checks passing
+- [x] Push to branch, verify CI runs
+- [x] PR shows all checks passing
 
 **Dependencies:** Task 16, Task 17
 
@@ -481,18 +481,18 @@
 
 ---
 
-### Task 19: Add dependency audit to CI
+### Task 19: Add dependency audit to CI ✅ DONE
 **Description:** Add `pip-audit` (Python) and `npm audit` (Node) to CI. Fail on high/critical vulnerabilities. Add dependabot config for automated PRs.
 
 **Acceptance criteria:**
-- [ ] CI job runs `pip-audit` and `npm audit`
-- [ ] Fails on CVSS >= 7.0
-- [ ] Dependabot configured for weekly updates
-- [ ] Allowlist for false positives documented
+- [x] CI job runs `pip-audit` and `npm audit`
+- [x] Fails on CVSS >= 7.0
+- [x] Dependabot configured for weekly updates
+- [x] Allowlist for false positives documented
 
 **Verification:**
-- [ ] CI runs audits
-- [ ] Manual: introduce known vuln, verify fail
+- [x] CI runs audits
+- [x] Manual: introduce known vuln, verify fail
 
 **Dependencies:** Task 18
 
@@ -504,18 +504,18 @@
 
 ---
 
-### Task 20: Add performance budgets to CI
-**Description:** Add bundle size budget (frontend) and render time budget (backend) to CI. Use `webpack-bundle-analyzer` or `vite-bundle-analyzer`. Fail if budget exceeded.
+### Task 20: Add performance budgets to CI ✅ DONE
+**Description:** Add bundle size budget (frontend) and render time budget (backend) to CI. Use `vite-bundle-analyzer` or `vite-bundle-analyzer`. Fail if budget exceeded.
 
 **Acceptance criteria:**
-- [ ] Frontend: total JS < 400KB gzipped, CSS < 50KB
-- [ ] Backend: render_edit < 30s for 30s clip @ 1080p
-- [ ] Budgets enforced in CI
-- [ ] Reports uploaded as artifacts
+- [x] Frontend: total JS < 400KB gzipped, CSS < 50KB
+- [x] Backend: render_edit < 30s for 30s clip @ 1080p
+- [x] Budgets enforced in CI
+- [x] Reports uploaded as artifacts
 
 **Verification:**
-- [ ] CI fails on budget exceed
-- [ ] Manual: verify budgets met currently
+- [x] CI fails on budget exceed
+- [x] Manual: verify budgets met currently
 
 **Dependencies:** Task 18
 
