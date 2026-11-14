@@ -11,20 +11,20 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "@types/react-window": "^1.8.8",
-    "lucide-react": "^0.468.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@types/react-window": "^2.0.0",
+    "lucide-react": "^1.72.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-virtualized-auto-sizer": "^2.0.4",
     "react-window": "^2.5.3",
-    "wavesurfer.js": "^7.8.11",
+    "wavesurfer.js": "^8.0.5",
     "zod": "^4.6.7",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^10.15.0",
