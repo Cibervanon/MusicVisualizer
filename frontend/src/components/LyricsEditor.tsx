@@ -5,22 +5,21 @@ import {
   Download,
   FileText,
   GripVertical,
-  Loader2,
   Plus,
   Play,
   Sparkles,
-  Trash2,
   Upload,
 } from "lucide-react";
-import { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { List } from "react-window";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 
 import { api, ApiError, waitForJob } from "../lib/validatedApi";
+import { parseLyricsImport, type LyricsImportKind } from "../lib/lyrics";
 import type { Job, LyricsLine, LyricsStyle, TextPreset } from "../lib/types";
 import { clamp, cn, formatTime, uid } from "../lib/utils";
 import { useStudio } from "../store/studio";
-import { Badge, Button, LabeledSlider, ProgressBar, Toggle } from "./ui";
+import { Button, LabeledSlider, ProgressBar, Toggle } from "./ui";
 
 interface LyricsEditorProps {
   projectId: string;
@@ -68,6 +67,8 @@ interface LineRowProps {
   moveLine: (fromIndex: number, toIndex: number) => void;
   seekToTime: (time: number) => void;
 }
+
+type LineRowData = Omit<LineRowProps, "index" | "style" | "ariaAttributes">;
 
 const LineRow = ({
   index,
@@ -203,9 +204,8 @@ export function LyricsEditor({
   const notify = useStudio((state) => state.notify);
   const capabilities = useStudio((state) => state.capabilities);
   const [importOpen, setImportOpen] = useState(false);
-  const [importKind, setImportKind] = useState<"srt" | "lrc" | "text">("srt");
+  const [importKind, setImportKind] = useState<LyricsImportKind>("srt");
   const [importText, setImportText] = useState("");
-  const [importPreview, setImportPreview] = useState<NormalizedLine[]>([]);
   const [busy, setBusy] = useState<"import" | "transcribe" | null>(null);
   const [transcribeJob, setTranscribeJob] = useState<Job | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -214,17 +214,9 @@ export function LyricsEditor({
 
   const rows = useMemo(() => normalizeLines(lines, duration), [lines, duration]);
 
-  const VirtualizedList = (props: any) => <List {...props} />;
-
-  const VirtualizedListWithTypes = (props: any) => <List {...props} />;
-
   const patchLine = useCallback((id: string, patch: Partial<LyricsLine>) => {
     const next = rows.map((line) => (line.id === id ? { ...line, ...patch } : line));
     onChangeLines(normalizeLines(next, duration));
-  }, [rows, duration, onChangeLines]);
-
-  const removeLine = useCallback((id: string) => {
-    onChangeLines(normalizeLines(rows.filter((line) => line.id !== id), duration));
   }, [rows, duration, onChangeLines]);
 
   const addLine = useCallback(() => {
@@ -251,31 +243,19 @@ export function LyricsEditor({
     onChangeStyle({ ...preset });
   }, [onChangeStyle]);
 
-  const updateImportPreview = useCallback(() => {
-    if (!importText.trim()) {
-      setImportPreview([]);
-      return;
-    }
+  const importPreview = useMemo<NormalizedLine[]>(() => {
+    if (!importText.trim()) return [];
     try {
-      let parsed: Array<{ start: number; end: number; text: string }> = [];
-      if (importKind === "srt") {
-        parsed = parseSRT(importText);
-      } else if (importKind === "lrc") {
-        parsed = parseLRC(importText);
-      } else {
-        parsed = parseText(importText);
-      }
-      setImportPreview(
-        parsed.map((p, i) => ({
-          id: uid(`import_${i}`),
-          start: clamp(p.start, 0, duration),
-          end: clamp(p.end, p.start + 0.2, duration),
-          text: p.text,
-          isValid: p.end > p.start + 0.05,
-        })),
-      );
+      const parsed = parseLyricsImport(importText, importKind, duration);
+      return parsed.map((p, i) => ({
+        id: uid(`import_${i}`),
+        start: clamp(p.start, 0, duration),
+        end: clamp(p.end, p.start + 0.2, duration),
+        text: p.text,
+        isValid: p.end > p.start + 0.05,
+      }));
     } catch {
-      setImportPreview([]);
+      return [];
     }
   }, [importText, importKind, duration]);
 
@@ -290,7 +270,6 @@ export function LyricsEditor({
       onChangeLines(validLines);
       onChangeEnabled(true);
       setImportText("");
-      setImportPreview([]);
       setImportOpen(false);
       notify(`${validLines.length} línea(s) importadas. Revísalas.`, "success");
     } catch (error) {
@@ -330,10 +309,6 @@ export function LyricsEditor({
     }
   }, []);
 
-  useEffect(() => {
-    updateImportPreview();
-  }, [importText, importKind, duration]);
-
   const previewStyle: React.CSSProperties = {
     fontFamily: `"${style.font}", "Segoe UI", sans-serif`,
     fontWeight: style.bold ? 800 : 500,
@@ -365,20 +340,7 @@ export function LyricsEditor({
     patchLine,
     moveLine,
     seekToTime,
-  }), [rows, duration, draggedId, dragOverId]);
-
-  const VirtualizedLines = ({ height, width }: { height: number; width: number }) => (
-    <VirtualizedList
-      className="max-h-[400px] rounded-xl border border-white/10 bg-black/20"
-      height={height}
-      width={width}
-      itemCount={rows.length}
-      itemSize={ROW_HEIGHT}
-      rowProps={lineRowData}
-      rowComponent={LineRow as any}
-      overscanCount={3}
-    />
-  );
+  }), [rows, duration, draggedId, dragOverId, moveLine, patchLine, seekToTime]);
 
   return (
     <div className="space-y-4">
@@ -691,20 +653,19 @@ export function LyricsEditor({
           </div>
         )}
 
-<AutoSizer
+        <AutoSizer
           ChildComponent={({ height, width }: { height: number | undefined; width: number | undefined }) => {
             if (height === undefined || width === undefined) {
               return null;
             }
             return (
-              <VirtualizedListWithTypes
-                className="max-h-[400px] rounded-xl border border-white/10 bg-black/20"
-                height={height}
-                width={width}
-                itemCount={rows.length}
-                itemSize={ROW_HEIGHT}
+              <List<LineRowData>
+                className="rounded-xl border border-white/10 bg-black/20"
+                style={{ height: Math.min(height, 400), width }}
+                rowCount={rows.length}
+                rowHeight={ROW_HEIGHT}
                 rowProps={lineRowData}
-                rowComponent={LineRow as any}
+                rowComponent={LineRow}
                 overscanCount={3}
               />
             );
@@ -729,54 +690,4 @@ export function LyricsEditor({
       </div>
     </div>
   );
-}
-
-function parseSRT(content: string): Array<{ start: number; end: number; text: string }> {
-  const blocks = content.trim().split(/\n\s*\n/);
-  return blocks
-    .map((block) => {
-      const lines = block.trim().split("\n");
-      if (lines.length < 3) return null;
-      const timeLine = lines[1];
-      const match = timeLine.match(/(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/);
-      if (!match) return null;
-      const start = timeToSeconds(match[1]);
-      const end = timeToSeconds(match[2]);
-      const text = lines.slice(2).join("\n").trim();
-      return { start, end, text };
-    })
-    .filter((x): x is { start: number; end: number; text: string } => x !== null);
-}
-
-function parseLRC(content: string): Array<{ start: number; end: number; text: string }> {
-  const lines = content.trim().split("\n");
-  const entries: Array<{ start: number; text: string }> = [];
-  for (const line of lines) {
-    const match = line.match(/\[(\d{2}):(\d{2}(?:\.\d+)?)\](.*)/);
-    if (match) {
-      const minutes = parseInt(match[1], 10);
-      const seconds = parseFloat(match[2]);
-      entries.push({ start: minutes * 60 + seconds, text: match[3].trim() });
-    }
-  }
-  return entries.map((e, i) => ({
-    start: e.start,
-    end: entries[i + 1] ? entries[i + 1].start : e.start + 3,
-    text: e.text,
-  }));
-}
-
-function parseText(content: string): Array<{ start: number; end: number; text: string }> {
-  const lines = content.trim().split("\n").filter((l) => l.trim());
-  const duration = 3;
-  return lines.map((text, i) => ({
-    start: i * duration,
-    end: (i + 1) * duration,
-    text: text.trim(),
-  }));
-}
-
-function timeToSeconds(time: string): number {
-  const [h, m, s] = time.split(":").map(Number);
-  return h * 3600 + m * 60 + s;
 }

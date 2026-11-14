@@ -1,11 +1,9 @@
-import { Captions, ChevronLeft, ChevronRight, Clapperboard, RotateCcw, Save, Scissors, SlidersHorizontal, Volume2, Wand2 } from "lucide-react";
-import { useMemo } from "react";
+import { Captions, ChevronLeft, ChevronRight, RotateCcw, Save, Scissors, SlidersHorizontal } from "lucide-react";
 
-import { Badge, Button, Card, LabeledSlider, SectionHeading } from "../ui";
+import { Button, Card, LabeledSlider } from "../ui";
 import { cn, clamp, formatTime } from "../../lib/utils";
 import type { EDL, Segment, LyricsStyle, TextPreset } from "../../lib/types";
 import { LyricsEditor } from "../LyricsEditor";
-import { useStudio } from "../../store/studio";
 
 interface EditorInspectorProps {
   edit: EDL;
@@ -15,8 +13,6 @@ interface EditorInspectorProps {
   totalDuration: number;
   targetDuration: number;
   masterDuration: number;
-  timelineDuration: number;
-  accent: string;
   lyricsLines: Array<{ id?: string; start: number; end: number; text: string }>;
   lyricsStyle: LyricsStyle | null;
   lyricsEnabled: boolean;
@@ -44,8 +40,6 @@ export function EditorInspector({
   totalDuration,
   targetDuration,
   masterDuration,
-  timelineDuration,
-  accent,
   lyricsLines,
   lyricsStyle,
   lyricsEnabled,

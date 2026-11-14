@@ -1,13 +1,10 @@
 import { Download, Eye, History, Zap, Loader2, Clapperboard, Volume2, Wand2 } from "lucide-react";
 
-import { Badge, Button, Card, ProgressBar } from "../ui";
-import { cn, formatBytes, formatTime, stageLabel } from "../../lib/utils";
+import { Button, Card, ProgressBar } from "../ui";
+import { formatBytes, stageLabel } from "../../lib/utils";
 import type { RenderInfo, Job, EDL, Project } from "../../lib/types";
-import { downloadUrl } from "../../lib/api";
-import { useStudio } from "../../store/studio";
 
 interface EditorSidebarProps {
-  projectId: string;
   edit: EDL;
   project: Project;
   rendered: RenderInfo | null;
@@ -22,7 +19,6 @@ interface EditorSidebarProps {
 }
 
 export function EditorSidebar({
-  projectId,
   edit,
   project,
   rendered,

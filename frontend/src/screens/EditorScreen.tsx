@@ -1,7 +1,7 @@
-import { ArrowLeft, Check, Download, Eye, Film, History, Loader2, Pause, Play, Redo2, RotateCcw, Save, Scissors, SlidersHorizontal, Split, Trash2, Undo2, Volume2, Wand2, Zap, Clapperboard, Copy, Captions } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { api, ApiError, downloadUrl, mediaUrl, waitForJob } from "../lib/validatedApi";
+import { api, ApiError, mediaUrl, waitForJob } from "../lib/validatedApi";
 import {
   docDuration,
   duplicateSegment,
@@ -15,19 +15,9 @@ import {
   timelineToSource,
 } from "../lib/edit";
 import type { EDL, Job, LyricsLine, LyricsStyle, RenderInfo, Segment } from "../lib/types";
-import { clamp, cn, formatBytes, formatTime, stageLabel } from "../lib/utils";
+import { clamp, cn } from "../lib/utils";
 import { useStudio } from "../store/studio";
-import { LyricsEditor } from "../components/LyricsEditor";
-import { Timeline } from "../components/Timeline";
-import {
-  Badge,
-  Button,
-  Card,
-  LabeledSlider,
-  ProgressBar,
-  SectionHeading,
-  Skeleton,
-} from "../components/ui";
+import { Button, Card, Skeleton } from "../components/ui";
 import {
   EditorHeader,
   EditorPreview,
@@ -87,25 +77,27 @@ export function EditorScreen() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const docRef = useRef<Doc | null>(null);
-  docRef.current = doc;
   const seqRef = useRef(0);
   const loadRef = useRef(0);
 
   useEffect(() => {
-    if (!project) return;
-    if (!selectedEditId && project.edits[0]) {
-      setSelectedEdit(project.edits[0].id);
-    }
-  }, [project?.id]);
+    docRef.current = doc;
+  }, [doc]);
 
-  const editId = selectedEditId || project?.edits[0]?.id || null;
+  const projectId = project?.id ?? null;
+  const firstEditId = project?.edits[0]?.id ?? null;
+  const editId = selectedEditId || firstEditId;
 
   useEffect(() => {
-    if (!project || !editId) return;
+    if (!selectedEditId && firstEditId) setSelectedEdit(firstEditId);
+  }, [firstEditId, selectedEditId, setSelectedEdit]);
+
+  useEffect(() => {
+    if (!projectId || !editId) return;
     const requestId = ++loadRef.current;
     setLoading(true);
     api
-      .getEdit(project.id, editId)
+      .getEdit(projectId, editId)
       .then(({ edit: loaded }) => {
         if (requestId !== loadRef.current) return;
         const normalized: EDL = { ...loaded, segments: ensureSegmentIds(loaded.segments || []) };
@@ -131,36 +123,51 @@ export function EditorScreen() {
     return () => {
       if (requestId === loadRef.current) loadRef.current += 1;
     };
-  }, [project?.id, editId]);
+  }, [projectId, editId, notify]);
 
+  // Las letras locales solo se resincronizan cuando cambian las persistidas:
+  // refrescar el proyecto tras un render no debe descartar ediciones sin guardar.
   useEffect(() => {
     if (!project) return;
     setLyricsLines(project.lyrics.lines || []);
     setLyricsStyle(project.lyrics.style);
     setLyricsEnabled(project.lyrics.enabled);
-  }, [project?.id, project?.lyrics.updated_at]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, project?.lyrics.updated_at]);
+
+  const renders = project?.renders;
+  const editIdForRenders = edit?.id ?? null;
 
   useEffect(() => {
-    if (!project || !edit) {
+    if (!renders || !editIdForRenders) {
       setRendered(null);
       return;
     }
-    const forEdit = project.renders.filter((render) => render.edit_id === edit.id);
+    const forEdit = renders.filter((render) => render.edit_id === editIdForRenders);
     const preview = forEdit.find((render) => render.type === "preview");
     const final = forEdit.find((render) => render.type === "final");
     setRendered((current) => {
-      if (current && current.edit_id === edit.id && forEdit.some((r) => r.id === current.id)) {
+      if (
+        current &&
+        current.edit_id === editIdForRenders &&
+        forEdit.some((r) => r.id === current.id)
+      ) {
         return current;
       }
       return preview || final || null;
     });
-  }, [edit?.id, project?.renders]);
+  }, [editIdForRenders, renders]);
+
+  const masterPath = edit?.master ?? null;
+  const renderedPath = rendered?.path ?? null;
 
   useEffect(() => {
-    if (!project || !edit) return;
-    const path = rendered?.path || edit.master;
-    setVideoSrc(path ? mediaUrl(project.id, path) : "");
-  }, [project?.id, edit?.master, rendered?.path]);
+    if (!projectId || !masterPath) {
+      setVideoSrc("");
+      return;
+    }
+    setVideoSrc(mediaUrl(projectId, renderedPath || masterPath));
+  }, [projectId, masterPath, renderedPath]);
 
   const fragmentDuration = Number(project?.fragment?.duration || edit?.duration || 30);
   const masterDuration = Number(
@@ -233,26 +240,6 @@ export function EditorScreen() {
     setSelectedId(doc.segments[0]?.id ?? null);
   }, [doc, selectedId]);
 
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-        event.preventDefault();
-        if (event.shiftKey) redo();
-        else undo();
-      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
-        event.preventDefault();
-        redo();
-      } else if (event.code === "Space") {
-        event.preventDefault();
-        togglePlay();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  });
-
   const dirty = useMemo(
     () => Boolean(doc && baseline && JSON.stringify(doc) !== baseline),
     [doc, baseline],
@@ -274,6 +261,26 @@ export function EditorScreen() {
     if (video.paused) video.play().catch(() => undefined);
     else video.pause();
   };
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+      } else if (event.code === "Space") {
+        event.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  });
 
   const save = async (
     silent = false,
@@ -469,7 +476,7 @@ export function EditorScreen() {
     notify("Efectos restablecidos a neutro.", "info");
   };
 
-  const allowed = (name: string) => !edit?.allowed_effects?.length || edit.allowed_effects.includes(name);
+
 
   if (!project) {
     return (
@@ -522,9 +529,6 @@ export function EditorScreen() {
         dirty={dirty}
         saving={saving}
         renderingType={renderingType}
-        renderJob={renderJob}
-        rendered={rendered}
-        renderStale={renderStale}
         pastLength={past.length}
         futureLength={future.length}
         onUndo={undo}
@@ -532,7 +536,6 @@ export function EditorScreen() {
         onSave={save}
         onPreview={() => doRender(true)}
         onRenderFinal={() => doRender(false)}
-        onEditSelect={setSelectedEdit}
       />
 
       {edits.length > 1 && (
@@ -561,7 +564,6 @@ export function EditorScreen() {
             <EditorPreview
               edit={edit}
               projectId={project.id}
-              timelineDuration={timelineDuration}
               usingRender={usingRender}
               renderStale={renderStale}
               dirty={dirty}
@@ -575,7 +577,6 @@ export function EditorScreen() {
               videoSrc={videoSrc}
               videoRef={videoRef}
               onTogglePlay={togglePlay}
-              onSeek={seekTo}
               onVideoTimeUpdate={handleVideoTimeUpdate}
               onVideoLoadedMetadata={handleVideoLoadedMetadata}
             />
@@ -610,8 +611,6 @@ export function EditorScreen() {
           totalDuration={totalDuration}
           targetDuration={targetDuration}
           masterDuration={masterDuration}
-          timelineDuration={timelineDuration}
-          accent={accent}
           lyricsLines={lyricsLines}
           lyricsStyle={lyricsStyle}
           lyricsEnabled={lyricsEnabled}
@@ -635,7 +634,6 @@ export function EditorScreen() {
       <div className="grid gap-5 xl:grid-cols-[1.55fr_1fr]">
         <div className="xl:col-span-1" />
         <EditorSidebar
-          projectId={project.id}
           edit={edit}
           project={project}
           rendered={rendered}

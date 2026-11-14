@@ -1,10 +1,9 @@
-import { ArrowLeft, Download, Eye, History, Redo2, RotateCcw, Save, Undo2 } from "lucide-react";
+import { Download, Eye, Redo2, Save, Undo2 } from "lucide-react";
 import { useMemo } from "react";
 
-import { Button, Badge, SectionHeading } from "../ui";
-import { cn, formatTime } from "../../lib/utils";
-import type { EDL, RenderInfo, Job } from "../../lib/types";
-import { useStudio } from "../../store/studio";
+import { Button, SectionHeading } from "../ui";
+import { formatTime } from "../../lib/utils";
+import type { EDL } from "../../lib/types";
 
 interface EditorHeaderProps {
   edit: EDL;
@@ -12,9 +11,6 @@ interface EditorHeaderProps {
   dirty: boolean;
   saving: boolean;
   renderingType: "preview" | "final" | null;
-  renderJob: Job | null;
-  rendered: RenderInfo | null;
-  renderStale: boolean;
   pastLength: number;
   futureLength: number;
   onUndo: () => void;
@@ -22,7 +18,6 @@ interface EditorHeaderProps {
   onSave: () => void;
   onPreview: () => void;
   onRenderFinal: () => void;
-  onEditSelect: (editId: string) => void;
 }
 
 export function EditorHeader({
@@ -31,9 +26,6 @@ export function EditorHeader({
   dirty,
   saving,
   renderingType,
-  renderJob,
-  rendered,
-  renderStale,
   pastLength,
   futureLength,
   onUndo,
@@ -41,11 +33,7 @@ export function EditorHeader({
   onSave,
   onPreview,
   onRenderFinal,
-  onEditSelect,
 }: EditorHeaderProps) {
-  const project = useStudio((state) => state.project);
-  const edits = project?.edits || [];
-  const accent = edit.style === "flash" ? "#FFFFFF" : "#D6FF3D";
   const renderBusy = renderingType !== null;
 
   const actionButtons = useMemo(() => (

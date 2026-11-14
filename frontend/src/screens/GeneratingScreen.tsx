@@ -14,7 +14,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { api, ApiError, waitForJob } from "../lib/validatedApi";
-import type { Job, JobClip } from "../lib/types";
+import type { JobClip } from "../lib/types";
 import { cn, formatTime, stageLabel } from "../lib/utils";
 import { useStudio } from "../store/studio";
 import {
@@ -63,7 +63,7 @@ export function GeneratingScreen() {
   const setStep = useStudio((state) => state.setStep);
   const refreshProject = useStudio((state) => state.refreshProject);
   const notify = useStudio((state) => state.notify);
-  const [now, setNow] = useState(Date.now() / 1000);
+  const [now, setNow] = useState(() => Date.now() / 1000);
   const [cancelling, setCancelling] = useState(false);
   const [finding, setFinding] = useState(false);
   const polledRef = useRef<string | null>(null);

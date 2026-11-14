@@ -1,16 +1,13 @@
 import { Download, Film, Pause, Play } from "lucide-react";
-import { useEffect, useRef } from "react";
 
 import { Badge, ProgressBar } from "../ui";
-import { cn, formatTime, stageLabel } from "../../lib/utils";
-import { downloadUrl } from "../../lib/api";
-import { mediaUrl } from "../../lib/api";
+import { formatTime, stageLabel } from "../../lib/utils";
+import { downloadUrl } from "../../lib/validatedApi";
 import type { EDL, RenderInfo, Job } from "../../lib/types";
 
 interface EditorPreviewProps {
   edit: EDL;
   projectId: string;
-  timelineDuration: number;
   usingRender: boolean;
   renderStale: boolean;
   dirty: boolean;
@@ -24,7 +21,6 @@ interface EditorPreviewProps {
   videoSrc: string;
   videoRef: React.RefObject<HTMLVideoElement>;
   onTogglePlay: () => void;
-  onSeek: (time: number) => void;
   onVideoTimeUpdate: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
   onVideoLoadedMetadata: (event: React.SyntheticEvent<HTMLVideoElement>) => void;
 }
@@ -32,7 +28,6 @@ interface EditorPreviewProps {
 export function EditorPreview({
   edit,
   projectId,
-  timelineDuration,
   usingRender,
   renderStale,
   dirty,
@@ -46,7 +41,6 @@ export function EditorPreview({
   videoSrc,
   videoRef,
   onTogglePlay,
-  onSeek,
   onVideoTimeUpdate,
   onVideoLoadedMetadata,
 }: EditorPreviewProps) {

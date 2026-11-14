@@ -3,17 +3,22 @@ import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const outfile = resolve("tests/.build/edit.test.mjs");
-mkdirSync(dirname(outfile), { recursive: true });
+const entries = ["tests/edit.test.ts", "tests/lyrics.test.ts"];
 
-await build({
-  entryPoints: ["tests/edit.test.ts"],
-  bundle: true,
-  platform: "node",
-  format: "esm",
-  target: "node20",
-  outfile,
-  logLevel: "warning",
-});
+for (const entry of entries) {
+  const name = entry.replace(/^tests\//, "").replace(/\.ts$/, "");
+  const outfile = resolve(`tests/.build/${name}.mjs`);
+  mkdirSync(dirname(outfile), { recursive: true });
 
-await import(pathToFileURL(outfile).href);
+  await build({
+    entryPoints: [entry],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    target: "node20",
+    outfile,
+    logLevel: "warning",
+  });
+
+  await import(pathToFileURL(outfile).href);
+}

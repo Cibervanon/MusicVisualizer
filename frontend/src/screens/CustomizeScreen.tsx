@@ -67,11 +67,14 @@ export function CustomizeScreen() {
   const [lyricsEnabled, setLyricsEnabled] = useState(false);
   const [generating, setGenerating] = useState(false);
 
+  // Solo se resincroniza cuando cambian las letras persistidas; refrescar el
+  // proyecto por un render no debe descartar ediciones sin guardar.
   useEffect(() => {
     if (!project) return;
     setLines(project.lyrics.lines || []);
     setLyricsStyle(project.lyrics.style);
     setLyricsEnabled(project.lyrics.enabled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, project?.lyrics.updated_at]);
 
   useEffect(() => {

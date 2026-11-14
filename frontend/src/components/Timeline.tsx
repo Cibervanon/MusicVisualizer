@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Segment } from "../lib/types";
 import { clamp, cn, formatTime } from "../lib/utils";
 
+const FRAME_DURATION = 1 / 30;
+
 interface TimelineProps {
   segments: Segment[];
   duration: number;
@@ -50,7 +52,10 @@ export function Timeline({
   const [width, setWidth] = useState(800);
   const dragRef = useRef<DragState | null>(null);
   const segmentsRef = useRef(segments);
-  segmentsRef.current = segments;
+
+  useEffect(() => {
+    segmentsRef.current = segments;
+  }, [segments]);
 
   useEffect(() => {
     if (!wrapRef.current) return;
@@ -63,7 +68,7 @@ export function Timeline({
   }, []);
 
   // Keyboard navigation
-  const frameDuration = 1 / 30; // assuming 30fps for frame step
+  // Frame step assumes a 30 fps timeline; the EDL itself stores seconds.
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -78,15 +83,13 @@ export function Timeline({
 
       if (!timelineFocused) return;
 
-      const selectedIndex = segments.findIndex((s) => s.id === selectedId);
-
       switch (event.key) {
         case "ArrowRight": {
           event.preventDefault();
           if (event.shiftKey && onMoveSelection) {
             onMoveSelection(1);
           } else {
-            const newTime = Math.min(duration, playhead + frameDuration);
+            const newTime = Math.min(duration, playhead + FRAME_DURATION);
             onSeek(newTime);
           }
           break;
@@ -96,20 +99,20 @@ export function Timeline({
           if (event.shiftKey && onMoveSelection) {
             onMoveSelection(-1);
           } else {
-            const newTime = Math.max(0, playhead - frameDuration);
+            const newTime = Math.max(0, playhead - FRAME_DURATION);
             onSeek(newTime);
           }
           break;
         }
         case "ArrowUp": {
           event.preventDefault();
-          const newTime = Math.min(duration, playhead + frameDuration * 10);
+          const newTime = Math.min(duration, playhead + FRAME_DURATION * 10);
           onSeek(newTime);
           break;
         }
         case "ArrowDown": {
           event.preventDefault();
-          const newTime = Math.max(0, playhead - frameDuration * 10);
+          const newTime = Math.max(0, playhead - FRAME_DURATION * 10);
           onSeek(newTime);
           break;
         }
@@ -144,7 +147,6 @@ export function Timeline({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [playhead, duration, selectedId, segments, onSeek, onSplit, onRemove, onMoveSelection]);
-
   const pxPerSec = width / Math.max(0.1, duration);
   const safeMaster = Math.max(masterDuration || duration, 1);
 

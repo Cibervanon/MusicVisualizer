@@ -163,11 +163,11 @@ export function SetupScreen() {
 
   const audioUrl = useMemo(
     () => (project?.audio ? mediaUrl(project.id, project.audio.path) : ""),
-    [project?.id, project?.audio?.path],
+    [project?.id, project?.audio],
   );
   const videoUrl = useMemo(
     () => (project?.video ? mediaUrl(project.id, project.video.path) : ""),
-    [project?.id, project?.video?.path],
+    [project?.id, project?.video],
   );
 
   const ensureProject = async (): Promise<Project | null> => {

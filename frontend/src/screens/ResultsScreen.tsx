@@ -8,11 +8,9 @@ import {
   Pencil,
   Play,
   Plus,
-  RefreshCw,
   Scissors,
   Trash2,
   TriangleAlert,
-  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
