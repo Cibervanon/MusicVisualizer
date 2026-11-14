@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+import shutil
+from collections.abc import Awaitable, Callable
+
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, ORJSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -26,6 +29,7 @@ from .core.errors import (
     unexpected_error_handler,
     validation_error_handler,
 )
+from .core.ffmpeg import FFMPEG, FFPROBE
 from .core.logging import RequestIdMiddleware, get_logger, set_request_id
 from .core.paths import FRONTEND_DIST, ensure_dirs
 
@@ -35,7 +39,6 @@ logger = get_logger("music-clip-studio")
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    default_response_class=ORJSONResponse,
     docs_url="/api/docs",
     redoc_url=None,
     openapi_url="/api/openapi.json",
@@ -80,12 +83,22 @@ for router in (
 async def on_startup() -> None:
     ensure_dirs()
     logger.info("%s %s listo", APP_NAME, APP_VERSION)
-    logger.info("FFmpeg: %s", "disponible" if settings else "?")
+    ffmpeg_ok = bool(shutil.which(FFMPEG))
+    ffprobe_ok = bool(shutil.which(FFPROBE))
+    logger.info(
+        "FFmpeg: %s · FFprobe: %s",
+        "disponible" if ffmpeg_ok else "no encontrado",
+        "disponible" if ffprobe_ok else "no encontrado",
+    )
+    if not (ffmpeg_ok and ffprobe_ok):
+        logger.warning(
+            "Faltan binarios de FFmpeg en el PATH: el análisis y el render no funcionarán."
+        )
 
 
 # Request logging middleware
 @app.middleware("http")
-async def log_requests(request, call_next):
+async def log_requests(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     import time
     start = time.perf_counter()
     request_id = set_request_id(request.headers.get("x-request-id"))
@@ -112,7 +125,7 @@ if FRONTEND_DIST.exists():
         app.mount("/assets", StaticFiles(directory=str(assets)), name="assets")
 
     @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
+    async def serve_spa(full_path: str) -> Response:
         if full_path.startswith("api/"):
             return JSONResponse(status_code=404, content={"error": {"code": "not_found", "message": "Endpoint no encontrado"}})
         candidate = (FRONTEND_DIST / full_path).resolve()

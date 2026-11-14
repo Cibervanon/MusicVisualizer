@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from ..core.ffmpeg import CREATE_NO_WINDOW, FFMPEG, probe
+from ..core.ffmpeg import CREATE_NO_WINDOW, FFMPEG, FFPROBE, probe
 
 
 def validate_render(
@@ -105,11 +105,16 @@ def validate_render(
                     "message": f"Perfil H.264: {codec_info['profile']} (recomendado High).",
                 }
             )
-        if codec_info["level"] and codec_info["level"] < 40:
+        required_level = _required_h264_level(info.width, info.height, fps)
+        if codec_info["level"] and codec_info["level"] < required_level:
             issues.append(
                 {
                     "level": "warning",
-                    "message": f"Nivel H.264: {codec_info['level'] / 10:.1f} (recomendado >= 4.0).",
+                    "message": (
+                        f"Nivel H.264 {codec_info['level'] / 10:.1f} por debajo del "
+                        f"necesario para {info.width}x{info.height}@{fps}fps "
+                        f"({required_level / 10:.1f})."
+                    ),
                 }
             )
     except Exception as exc:
@@ -151,30 +156,69 @@ def validate_render(
     }
 
 
-def _check_av_sync(path: Path) -> dict[str, Any]:
-    """Check audio/video synchronization using ffprobe."""
+# Niveles H.264 como (nivel x10, macrobloques/segundo, macrobloques/frame).
+# Fuente: tabla A.1 de ITU-T H.264.
+_H264_LEVELS: tuple[tuple[int, int, int], ...] = (
+    (10, 1_485, 99),
+    (11, 3_000, 396),
+    (12, 6_000, 396),
+    (13, 11_880, 396),
+    (20, 11_880, 396),
+    (21, 19_800, 792),
+    (22, 20_250, 1_620),
+    (30, 40_500, 1_620),
+    (31, 108_000, 3_600),
+    (32, 216_000, 5_120),
+    (40, 245_760, 8_192),
+    (41, 245_760, 8_192),
+    (42, 522_240, 8_704),
+    (50, 589_824, 22_080),
+    (51, 983_040, 36_864),
+    (52, 2_073_600, 36_864),
+    (60, 4_177_920, 139_264),
+)
+
+
+def _required_h264_level(width: int, height: int, fps: int) -> int:
+    """Nivel mínimo de H.264 para una resolución y fps dados."""
+    frame_mbs = max(1, -(-width // 16)) * max(1, -(-height // 16))
+    mbs_per_second = frame_mbs * max(1, fps)
+    for level, max_mbps, max_fs in _H264_LEVELS:
+        if mbs_per_second <= max_mbps and frame_mbs <= max_fs:
+            return level
+    return _H264_LEVELS[-1][0]
+
+
+def _ffprobe_json(args: list[str], timeout: int) -> dict[str, Any]:
+    """Ejecuta ffprobe y devuelve su JSON. Falla si el proceso o el JSON no son válidos."""
     proc = subprocess.run(
-        [
-            FFMPEG,
-            "-v",
-            "error",
-            "-i",
-            str(path),
-            "-show_streams",
-            "-select_streams",
-            "a:v",
-            "-of",
-            "json",
-        ],
+        [FFPROBE, "-v", "error", *args],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=timeout,
         creationflags=CREATE_NO_WINDOW,
     )
-    data = json.loads(proc.stdout)
+    if proc.returncode != 0:
+        detail = (proc.stderr or "").strip()[:300]
+        raise RuntimeError(detail or f"ffprobe terminó con código {proc.returncode}")
+    try:
+        parsed = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("ffprobe devolvió una respuesta ilegible") from exc
+    if not isinstance(parsed, dict):
+        raise RuntimeError("ffprobe devolvió un JSON que no es un objeto")
+    return parsed
+
+
+def _check_av_sync(path: Path) -> dict[str, Any]:
+    """Check audio/video synchronization using ffprobe."""
+    data = _ffprobe_json(
+        ["-show_entries", "stream=codec_type,start_time", "-of", "json", str(path)],
+        timeout=30,
+    )
     streams = data.get("streams", [])
-    video_stream = next((s for s in streams if s.get("codec_type") == "video"), {})
-    audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), {})
+    video_stream: dict[str, Any] = next((s for s in streams if s.get("codec_type") == "video"), {})
+    audio_stream: dict[str, Any] = next((s for s in streams if s.get("codec_type") == "audio"), {})
 
     v_start = float(video_stream.get("start_time", 0) or 0)
     a_start = float(audio_stream.get("start_time", 0) or 0)
@@ -188,30 +232,22 @@ def _check_av_sync(path: Path) -> dict[str, Any]:
 
 def _check_keyframes(path: Path, fps: int) -> dict[str, Any]:
     """Check keyframe interval using ffprobe."""
-    proc = subprocess.run(
+    data = _ffprobe_json(
         [
-            FFMPEG,
-            "-v",
-            "error",
-            "-i",
-            str(path),
             "-select_streams",
-            "v",
+            "v:0",
             "-show_frames",
             "-show_entries",
-            "frame=key_frame,pkt_pts_time",
+            "frame=key_frame,pts_time",
             "-of",
             "json",
+            str(path),
         ],
-        capture_output=True,
-        text=True,
         timeout=60,
-        creationflags=CREATE_NO_WINDOW,
     )
-    data = json.loads(proc.stdout)
     frames = data.get("frames", [])
     keyframe_times = [
-        float(f["pkt_pts_time"]) for f in frames if f.get("key_frame") == 1
+        float(f["pts_time"]) for f in frames if f.get("key_frame") == 1 and f.get("pts_time")
     ]
     if len(keyframe_times) < 2:
         return {"max_interval_seconds": 0.0, "keyframe_count": len(keyframe_times)}
@@ -225,31 +261,24 @@ def _check_keyframes(path: Path, fps: int) -> dict[str, Any]:
 
 def _check_h264_profile(path: Path) -> dict[str, Any]:
     """Check H.264 profile and level."""
-    proc = subprocess.run(
+    data = _ffprobe_json(
         [
-            FFMPEG,
-            "-v",
-            "error",
-            "-i",
-            str(path),
             "-select_streams",
-            "v",
+            "v:0",
             "-show_entries",
             "stream=profile,level",
             "-of",
             "json",
+            str(path),
         ],
-        capture_output=True,
-        text=True,
         timeout=30,
-        creationflags=CREATE_NO_WINDOW,
     )
-    data = json.loads(proc.stdout)
     streams = data.get("streams", [])
     if not streams:
         return {"profile": "unknown", "level": None}
     stream = streams[0]
     profile = stream.get("profile", "unknown")
     level = stream.get("level")
-    level_num = int(level) if level and level.isdigit() else None
+    level_text = str(level) if level is not None else ""
+    level_num = int(level_text) if level_text.isdigit() else None
     return {"profile": profile, "level": level_num}

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import time
 import zipfile
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from starlette.background import BackgroundTask
 
 from ..core.errors import NotFoundError
@@ -43,7 +43,7 @@ async def render(body: RenderRequest) -> dict[str, Any]:
 @router.post("/render/preview")
 async def render_preview(body: RenderRequest) -> dict[str, Any]:
     body.preview = True
-    return await render(body)
+    return cast(dict[str, Any], await render(body))
 
 
 @router.get("/renders/{render_id}")
@@ -59,14 +59,14 @@ async def render_validate(render_id: str, project_id: str | None = Query(default
 
 
 @router.get("/download/{render_id}")
-async def download(render_id: str, request: Request, project_id: str | None = Query(default=None)):
+async def download(render_id: str, request: Request, project_id: str | None = Query(default=None)) -> Response:
     project, render = find_render(render_id, project_id)
     path = render_abs_path(project, render)
     return media_response(path, request, download_name=render.get("filename") or path.name)
 
 
 @router.post("/download/zip")
-async def download_zip(body: ZipRequest):
+async def download_zip(body: ZipRequest) -> FileResponse:
     project = load_project(body.project_id)
     renders = project.get("renders") or []
     if body.render_ids:

@@ -106,19 +106,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff mypy
           pip install -r requirements.txt
         working-directory: backend
 
       - name: Lint (ruff)
-        run: ruff check .
+        run: python -m ruff check .
         working-directory: backend
 
       - name: Type check (mypy)
-        run: mypy app/
+        run: python -m mypy app/
         working-directory: backend
 
-  # Backend tests
+  # Backend tests (includes the real FFmpeg render integration test)
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -137,6 +136,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
         working-directory: backend
+
+      - name: Check FFmpeg
+        run: ffmpeg -version && ffprobe -version
 
       - name: Test
         run: python -m unittest discover -s tests -v
@@ -159,7 +161,6 @@ jobs:
       - name: Frontend security audit
         run: npm audit --audit-level=high
         working-directory: frontend
-        continue-on-error: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -171,11 +172,10 @@ jobs:
       - name: Backend security audit
         run: |
           pip install pip-audit
-          pip-audit -r requirements.txt --fail-only
+          pip-audit -r requirements.txt
         working-directory: backend
-        continue-on-error: false
 
-  # Bundle size check
+  # Bundle size budget, measured gzipped (what the browser actually downloads)
   bundle-size:
     name: Bundle Size Check
     runs-on: ubuntu-latest
@@ -194,59 +194,31 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Check bundle size
-        run: |
-          npx vite-bundle-analyzer dist --json > bundle-report.json
-          echo "Bundle report generated"
-          # Check JS bundle size (should be < 400KB gzipped)
-          MAX_JS_SIZE=400000
-          MAX_CSS_SIZE=50000
-          
-          JS_SIZE=$(ls -la dist/assets/*.js | awk '{sum += $5} END {print sum}')
-          CSS_SIZE=$(ls -la dist/assets/*.css | awk '{sum += $5} END {print sum}')
-          
-          echo "JS total: $JS_SIZE bytes"
-          echo "CSS total: $CSS_SIZE bytes"
-          
-          if [ "$JS_SIZE" -gt "$MAX_JS_SIZE" ]; then
-            echo "❌ JS bundle too large: $JS_SIZE > $MAX_JS_SIZE"
-            exit 1
-          fi
-          
-          if [ "$CSS_SIZE" -gt "$MAX_CSS_SIZE" ]; then
-            echo "❌ CSS bundle too large: $CSS_SIZE > $MAX_CSS_SIZE"
-            exit 1
-          fi
-          
-          echo "✅ Bundle sizes within budget"
+      - name: Build
+        run: npm run build
         working-directory: frontend
 
-  # Render time budget (backend)
-  render-budget:
-    name: Render Time Budget
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
-
-      - name: Install dependencies
+      - name: Check bundle size
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-        working-directory: backend
+          set -euo pipefail
+          JS_GZIP=$(find dist/assets -name '*.js' -print0 | xargs -0 cat | gzip -9 | wc -c)
+          CSS_GZIP=$(find dist/assets -name '*.css' -print0 | xargs -0 cat | gzip -9 | wc -c)
+          MAX_JS_GZIP=180000
+          MAX_CSS_GZIP=20000
 
-      - name: Skip render time check (requires media files)
-        run: |
-          echo "⏭️ Skipping render time check (requires test media files)"
-          echo "This check should run in a separate integration test environment with test media"
-        working-directory: backend
-        continue-on-error: false
+          echo "JS gzip total:  ${JS_GZIP} bytes (budget ${MAX_JS_GZIP})"
+          echo "CSS gzip total: ${CSS_GZIP} bytes (budget ${MAX_CSS_GZIP})"
+
+          if [ "$JS_GZIP" -gt "$MAX_JS_GZIP" ]; then
+            echo "JS bundle too large: ${JS_GZIP} > ${MAX_JS_GZIP}"
+            exit 1
+          fi
+          if [ "$CSS_GZIP" -gt "$MAX_CSS_GZIP" ]; then
+            echo "CSS bundle too large: ${CSS_GZIP} > ${MAX_CSS_GZIP}"
+            exit 1
+          fi
+          echo "Bundle sizes within budget"
+        working-directory: frontend
 
   # Summary
   ci-summary:
@@ -255,7 +227,7 @@ jobs:
     needs: [
       frontend-lint, frontend-test, frontend-build,
       backend-lint, backend-test,
-      security-audit, bundle-size, render-budget
+      security-audit, bundle-size
     ]
     if: always()
     steps:
@@ -269,8 +241,7 @@ jobs:
           echo "Backend Test: ${{ needs.backend-test.result }}"
           echo "Security Audit: ${{ needs.security-audit.result }}"
           echo "Bundle Size: ${{ needs.bundle-size.result }}"
-          echo "Render Budget: ${{ needs.render-budget.result }}"
-          
+
           if [[ "${{ needs.frontend-lint.result }}" != "success" ]] || \
              [[ "${{ needs.frontend-test.result }}" != "success" ]] || \
              [[ "${{ needs.frontend-build.result }}" != "success" ]] || \
@@ -278,8 +249,8 @@ jobs:
              [[ "${{ needs.backend-test.result }}" != "success" ]] || \
              [[ "${{ needs.security-audit.result }}" != "success" ]] || \
              [[ "${{ needs.bundle-size.result }}" != "success" ]]; then
-            echo "❌ Some checks failed"
+            echo "Some checks failed"
             exit 1
           fi
-          
-          echo "✅ All checks passed"
+
+          echo "All checks passed"

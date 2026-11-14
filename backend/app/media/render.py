@@ -37,7 +37,7 @@ from ..quality.validator import validate_render
 
 ProgressCallback = Callable[[float], Awaitable[None] | None]
 
-QUALITY_PRESETS = {
+QUALITY_PRESETS: dict[str, dict[str, Any]] = {
     "fast": {"preset": "veryfast", "crf": 22, "audio": "160k"},
     "balanced": {"preset": "veryfast", "crf": 20, "audio": "192k"},
     "high": {"preset": "medium", "crf": 18, "audio": "224k"},
@@ -298,21 +298,27 @@ async def render_edit(
 
     preset = QUALITY_PRESETS.get(quality, QUALITY_PRESETS["balanced"])
     if preview:
-        preset = {"preset": "ultrafast", "crf": 28, "audio": "128k"}
+        # superfast mantiene CABAC (perfil High) y sigue siendo muy rápido.
+        preset = {"preset": "superfast", "crf": 28, "audio": "128k"}
+
+    # GOP de 2 s: keyframes frecuentes para seeking y preview fluida.
+    gop = str(max(12, int(fps) * 2))
 
     encode: list[str] = []
     if encoder == "qsv":
-        encode = ["-c:v", "h264_qsv", "-preset", "veryfast", "-global_quality", "23"]
+        encode = ["-c:v", "h264_qsv", "-preset", "veryfast", "-global_quality", "23", "-g", gop]
     else:
         encode = [
             "-c:v",
             "libx264",
             "-preset",
-            preset["preset"],
+            str(preset["preset"]),
             "-crf",
             str(preset["crf"]),
             "-profile:v",
             "high",
+            "-g",
+            gop,
         ]
 
     args = [
@@ -330,7 +336,7 @@ async def render_edit(
         "-c:a",
         "aac",
         "-b:a",
-        preset["audio"],
+        str(preset["audio"]),
         "-ar",
         "48000",
         "-movflags",

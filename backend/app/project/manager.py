@@ -11,7 +11,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..core.errors import NotFoundError, ValidationError
 from ..core.paths import ensure_dirs, project_dir, project_layout, safe_join
@@ -210,7 +210,7 @@ def add_edit(project_id: str, edit: dict[str, Any]) -> dict[str, Any]:
 def find_edit(project: dict[str, Any], edit_id: str) -> dict[str, Any]:
     for edit in project.get("edits", []):
         if edit.get("id") == edit_id:
-            return edit
+            return cast(dict[str, Any], edit)
     raise NotFoundError(f"Edición no encontrada: {edit_id}")
 
 
@@ -219,7 +219,7 @@ def validate_audio_source(project: dict[str, Any]) -> Path:
     path = audio.get("path")
     if not path:
         raise ValidationError("El proyecto no tiene audio subido.")
-    resolved = project_dir(project["id"]) / path
+    resolved = project_dir(project["id"]) / str(path)
     if not resolved.exists():
         raise NotFoundError("El archivo de audio del proyecto ya no existe en disco.")
     return resolved
@@ -230,7 +230,7 @@ def validate_video_source(project: dict[str, Any]) -> Path:
     path = video.get("path")
     if not path:
         raise ValidationError("El proyecto no tiene vídeo de origen.")
-    resolved = project_dir(project["id"]) / path
+    resolved = project_dir(project["id"]) / str(path)
     if not resolved.exists():
         raise NotFoundError("El archivo de vídeo del proyecto ya no existe en disco.")
     return resolved

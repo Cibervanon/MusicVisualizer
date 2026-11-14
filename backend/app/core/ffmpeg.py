@@ -119,6 +119,8 @@ def probe(path: str | Path, timeout: int = 90) -> MediaInfo:
 
     duration = 0.0
     for candidate in (fmt.get("duration"), (video or {}).get("duration"), (audio or {}).get("duration")):
+        if candidate is None:
+            continue
         try:
             duration = float(candidate)
             if duration > 0:
@@ -202,6 +204,7 @@ async def _read_progress(
     duration: float | None,
     callback: ProgressCallback | None,
 ) -> None:
+    last_reported = -1.0
     while True:
         line = await stream.readline()
         if not line:
@@ -215,11 +218,15 @@ async def _read_progress(
                 seconds = int(value) / 1_000_000
             except ValueError:
                 continue
-            if seconds >= 0 and callback is not None:
+            # FFmpeg emite out_time_us y out_time_ms con el mismo valor en cada
+            # bloque: se descarta el duplicado para no repetir callbacks ni logs.
+            if seconds >= 0 and seconds > last_reported and callback is not None:
+                last_reported = seconds
                 result = callback(min(1.0, seconds / duration), {"out_time": round(seconds, 3)})
                 if asyncio.iscoroutine(result):
                     await result
         elif key == "progress" and value == "end" and callback is not None:
+            last_reported = float("inf")
             result = callback(1.0, {"out_time": duration})
             if asyncio.iscoroutine(result):
                 await result
@@ -249,6 +256,7 @@ async def run_ffmpeg(
         raise ProcessingError("FFmpeg no está instalado o no está en el PATH.") from exc
 
     stderr_lines: list[str] = []
+    assert proc.stdout is not None and proc.stderr is not None
     tasks = [
         asyncio.create_task(_drain_stderr(proc.stderr, stderr_lines)),
         asyncio.create_task(_read_progress(proc.stdout, duration, on_progress)),

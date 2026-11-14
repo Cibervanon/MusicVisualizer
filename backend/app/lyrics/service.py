@@ -130,7 +130,7 @@ def read_lyrics_file(project_id: str) -> dict[str, Any]:
 def transcribe_audio(project_id: str, language: str | None, model_size: str) -> list[dict[str, Any]]:
     """Transcripción opcional con faster-whisper. Si no está instalado, error claro."""
     try:
-        from faster_whisper import WhisperModel  # type: ignore
+        from faster_whisper import WhisperModel
     except Exception as exc:  # pragma: no cover - depende del extra
         raise AppError(
             "La transcripción automática requiere el extra 'faster-whisper'.",

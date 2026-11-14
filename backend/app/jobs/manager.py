@@ -7,8 +7,8 @@ import json
 import time
 import traceback
 import uuid
-from collections.abc import Awaitable, Callable
-from typing import Any
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any, cast
 
 from ..core.errors import AppError, ProcessingError
 from ..core.logging import get_logger, log_job_transition, set_job_id
@@ -64,7 +64,7 @@ class JobStore:
             job = self._jobs.get(job_id)
             if job is None:
                 raise AppError("Trabajo no encontrado.", code="job_not_found", status_code=404)
-            return json.loads(json.dumps(job))
+            return cast(dict[str, Any], json.loads(json.dumps(job)))
 
     async def update(self, job_id: str, **fields: Any) -> dict[str, Any]:
         async with self._lock:
@@ -91,7 +91,7 @@ class JobStore:
                 )
                 if len(job["logs"]) > 80:
                     del job["logs"][: len(job["logs"]) - 80]
-            return json.loads(json.dumps(job))
+            return cast(dict[str, Any], json.loads(json.dumps(job)))
 
     async def event(self, job_id: str) -> asyncio.Event:
         async with self._lock:
@@ -107,13 +107,13 @@ class JobStore:
                 raise AppError("Trabajo no encontrado.", code="job_not_found", status_code=404)
             job["cancel_requested"] = True
             if job["status"] in TERMINAL:
-                return json.loads(json.dumps(job))
+                return cast(dict[str, Any], json.loads(json.dumps(job)))
             job["status"] = "cancelling"
             job["message"] = "Cancelando…"
             event = self._events.get(job_id)
             if event is not None:
                 event.set()
-            return json.loads(json.dumps(job))
+            return cast(dict[str, Any], json.loads(json.dumps(job)))
 
     async def start(
         self,
@@ -225,7 +225,7 @@ class JobStore:
             self._events.pop(job_id, None)
             self._tasks.pop(job_id, None)
 
-    async def stream(self, job_id: str):
+    async def stream(self, job_id: str) -> AsyncIterator[str]:
         """Generador SSE con el estado del trabajo."""
         last = None
         idle = 0

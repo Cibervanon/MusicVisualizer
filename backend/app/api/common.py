@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import mimetypes
 import re
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
 import aiofiles
 from fastapi import Request, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from ..core.errors import NotFoundError, ValidationError
 from ..core.paths import PROJECTS_DIR, project_dir, project_layout
@@ -125,7 +126,7 @@ def render_abs_path(project: dict[str, Any], render: dict[str, Any]) -> Path:
     return path
 
 
-def media_response(path: Path, request: Request, download_name: str | None = None):
+def media_response(path: Path, request: Request, download_name: str | None = None) -> Response:
     media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     size = path.stat().st_size
     range_header = request.headers.get("range")
@@ -145,7 +146,7 @@ def media_response(path: Path, request: Request, download_name: str | None = Non
     end = max(start, min(end, size - 1))
     length = end - start + 1
 
-    async def iterator():
+    async def iterator() -> AsyncIterator[bytes]:
         async with aiofiles.open(path, "rb") as handle:
             await handle.seek(start)
             remaining = length

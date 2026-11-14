@@ -8,6 +8,8 @@ import uuid
 from contextvars import ContextVar
 from typing import Any
 
+from starlette.types import ASGIApp, Receive, Scope, Send
+
 from ..core.config import settings
 
 _request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
@@ -86,10 +88,10 @@ def get_job_id() -> str | None:
 class RequestIdMiddleware:
     """ASGI middleware to set request ID for each request."""
 
-    def __init__(self, app):
+    def __init__(self, app: ASGIApp) -> None:
         self.app = app
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return

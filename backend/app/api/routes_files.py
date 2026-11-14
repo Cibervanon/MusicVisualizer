@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
+from fastapi.responses import Response
 
 from ..core.errors import NotFoundError
 from ..core.paths import project_dir, safe_join
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/api/files", tags=["files"])
 
 
 @router.get("/{project_id}/{file_path:path}")
-async def serve_file(project_id: str, file_path: str, request: Request):
+async def serve_file(project_id: str, file_path: str, request: Request) -> Response:
     base = project_dir(project_id)
     try:
         path = safe_join(base, *file_path.split("/"))
