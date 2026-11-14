@@ -292,21 +292,21 @@
 
 ---
 
-### Task 12: Improve LyricsEditor layout and UX
+### Task 12: Improve LyricsEditor layout and UX ✅ DONE
 **Description:** Redesign LyricsEditor: use proper table layout for lines, add drag-to-reorder, improve import flow, add per-line preview, better validation feedback. Fix cramped grid layout.
 
 **Acceptance criteria:**
-- [ ] Lines displayed in virtualized table (react-window)
-- [ ] Drag handle to reorder lines
-- [ ] Import modal with live preview
-- [ ] Inline validation (red border on invalid times)
-- [ ] Per-line playback button
-- [ ] Responsive on mobile
+- [x] Lines displayed in virtualized table (react-window)
+- [x] Drag handle to reorder lines
+- [x] Import modal with live preview
+- [x] Inline validation (red border on invalid times)
+- [x] Per-line playback button
+- [x] Responsive on mobile
 
 **Verification:**
-- [ ] `npm test` passes
-- [ ] `npm run build` succeeds
-- [ ] Manual: create/edit/import lyrics
+- [x] `npm run build` succeeds
+- [x] `npm test` passes
+- [x] Manual: create/edit/import lyrics
 
 **Dependencies:** Task 1
 
@@ -586,18 +586,19 @@
 
 ---
 
-### Task 23: Improve Timeline rendering performance
+### Task 23: Improve Timeline rendering performance ✅ DONE
 **Description:** Optimize Timeline: use `requestAnimationFrame` for playhead, memoize segment rendering, avoid re-renders on playhead move, use CSS transform for blocks instead of left/width.
 
 **Acceptance criteria:**
-- [ ] 60fps playhead animation
-- [ ] No re-render of segments on playhead move
-- [ ] 500+ segments render smoothly
-- [ ] Drag/resize 60fps
+- [x] 60fps playhead animation
+- [x] No re-render of segments on playhead move
+- [x] 500+ segments render smoothly
+- [x] Drag/resize 60fps
 
 **Verification:**
-- [ ] `npm run build` succeeds
-- [ ] Manual: profile with React DevTools, verify no unnecessary renders
+- [x] `npm run build` succeeds
+- [x] `npm test` passes
+- [x] Manual: profile with React DevTools, verify no unnecessary renders
 
 **Dependencies:** Task 1, Task 11
 

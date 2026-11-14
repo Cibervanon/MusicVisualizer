@@ -10,9 +10,12 @@
     "test": "node tests/run-edit-tests.mjs"
   },
   "dependencies": {
+    "@types/react-window": "^1.8.8",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-virtualized-auto-sizer": "^2.0.4",
+    "react-window": "^2.5.3",
     "wavesurfer.js": "^7.8.11",
     "zod": "^4.6.7",
     "zustand": "^5.0.2"
