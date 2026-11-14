@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumen Studio - Documentación Técnica Completa</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a3a 50%, #2d1b4e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(20, 20, 40, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 100px rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #1a1a3a 0%, #2d1b4e 100%);
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at center, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #d6ff3d, #8b5cf6, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        header .subtitle {
+            color: #a855f7;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            position: relative;
+            z-index: 1;
+        }
+        header .version {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        nav {
+            background: rgba(10, 10, 20, 0.8);
+            padding: 15px 30px;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            overflow-x: auto;
+        }
+        nav ul {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            list-style: none;
+            justify-content: center;
+        }
+        nav a {
+            color: #94a3b8;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        nav a:hover {
+            color: #d6ff3d;
+            background: rgba(214, 255, 61, 0.1);
+            border-color: rgba(214, 255, 61, 0.3);
+        }
+        main {
+            padding: 30px 40px;
+        }
+        section {
+            margin-bottom: 50px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        section:nth-child(1) { animation-delay: 0.1s; }
+        section:nth-child(2) { animation-delay: 0.2s; }
+        section:nth-child(3) { animation-delay: 0.3s; }
+        section:nth-child(4) { animation-delay: 0.4s; }
+        section:nth-child(5) { animation-delay: 0.5s; }
+        h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 28px;
+            background: linear-gradient(180deg, #d6ff3d, #8b5cf6);
+            border-radius: 2px;
+        }
+        h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 24px 0 12px;
+            color: #e0e7ff;
+        }
+        p {
+            margin-bottom: 16px;
+            color: #cbd5e1;
+        }
+        code {
+            background: rgba(139, 92, 246, 0.15);
+            color: #d6ff3d;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #0a0a1a;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        pre code {
+            background: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        .feature-card {
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(214, 255, 61, 0.4);
+            box-shadow: 0 12px 40px rgba(139, 92, 246, 0.2);
+        }
+        .feature-card h4 {
+            color: #d6ff3d;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        .feature-card p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        .tech-badge {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(214, 255, 61, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: #e0e7ff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .architecture-diagram {
+            background: #0a0a1a;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            white-space: pre;
+            color: #94a3b8;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status-done { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+        .status-progress { background: rgba(249, 115, 22, 0.2); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.4); }
+        .status-pending { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4); }
+        .warning-box {
+            background: rgba(249, 115, 22, 0.15);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            color: #fde68a;
+        }
+        .info-box {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            color: #a5f3fc;
+        }
+        .success-box {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            color: #86efac;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+        }
+        th {
+            background: rgba(139, 92, 246, 0.1);
+            color: #d6ff3d;
+            font-weight: 600;
+        }
+        td {
+            color: #cbd5e1;
+        }
+        tr:hover td {
+            background: rgba(139, 92, 246, 0.05);
+        }
+        .footer {
+            background: rgba(10, 10, 20, 0.9);
+            border-top: 1px solid rgba(139, 92, 246, 0.2);
+            padding: 30px 40px;
+            text-align: center;
+            color: #64748b;
+        }
+        .footer a {
+            color: #8b5cf6;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            color: #d6ff3d;
+        }
+        @media (max-width: 768px) {
+            .container { margin: 0; border-radius: 0; }
+            main { padding: 20px; }
+            nav ul { justify-content: flex-start; }
+            h2 { font-size: 1.5rem; }
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Lumen Studio</h1>
+            <div class="subtitle">Music Video Studio Local</div>
+            <div class="version">v0.1.0 · <span id="date"></span></div>
+        </header>
+
+        <nav>
+            <ul>
+                <li><a href="#overview">Visión General</a></li>
+                <li><a href="#architecture">Arquitectura</a></li>
+                <li><a href="#features">Funcionalidades</a></li>
+                <li><a href="#pipeline">Pipeline de Render</a></li>
+                <li><a href="#editor">Editor Visual</a></li>
+                <li><a href="#audio">Análisis de Audio</a></li>
+                <li><a href="#video">Análisis de Video</a></li>
+                <li><a href="#lyrics">Sistema de Letras</a></li>
+                <li><a href="#jobs">Sistema de Jobs</a></li>
+                <li><a href="#validation">Validación</a></li>
+                <li><a href="#tech">Stack Tecnológico</a></li>
+                <li><a href="#testing">Testing</a></li>
+                <li><a href="#ci">CI/CD</a></li>
+                <li><a href="#roadmap">Roadmap</a></li>
+            </ul>
+        </nav>
+
+        <main>
+            <section id="overview">
+                <h2>Visión General</h2>
+                <p><strong>Lumen Studio</strong> es un estudio local de creación de videoclips musicales sincronizados, desarrollado como aplicación <strong>100% local</strong> sin dependencias en la nube, APIs pagas ni servicios externos. Todo el procesamiento ocurre en tu máquina.</p>
+
+                <div class="info-box">
+                    <strong>🎯 Objetivo:</strong> Permitir a músicos y creadores generar videoclips profesionales sincronizados con su música, con calidad comparable a estudios profesionales, pero sin costos de nube ni límites de uso.
+                </div>
+
+                <h3>Principios de Diseño</h3>
+                <ul style="margin: 16px 0; padding-left: 24px; color: #cbd5e1;">
+                    <li><strong>Local-first:</strong> Zero cloud dependencies. Todo corre en tu hardware.</li>
+                    <li><strong>Privacidad total:</strong> Tu música y video nunca salen de tu máquina.</li>
+                    <li><strong>Calidad profesional:</strong> Render H.264 + AAC, validado con ffprobe, normalizado a −14 LUFS.</li>
+                    <li><strong>Extensible:</strong> Arquitectura modular para añadir estilos, efectos, analizadores.</li>
+                    <li><strong>Accesible:</strong> UI en español, dark mode premium, navegación por teclado, ARIA completo.</                </ul>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🎵 Análisis Musical Inteligente</h4>
+                        <p>Detección de BPM, beats, downbeats, secciones (intro/verse/chorus/drop), eventos musicales (energy up/down, silence, kicks) y envolventes espectrales por banda (kick, bass, snare, hat).</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🎬 Análisis Visual Avanzado</h4>
+                        <p>Detección de escenas con PySceneDetect, medición de movimiento óptico, calidad, nitidez, brillo. Biblioteca de escenas reutilizable.</                    </div>
+                    <div class="feature-card">
+                        <h4>✂️ Planificación de EDL Sincronizada</h4>
+                        <p>10 estilos de montaje (Cinematic, Dynamic, Beat Sync, Fast Cuts, Smooth, Emotional, Flash, Modern, Minimal, Experimental). Cortes anclados a beats/downbeats con diversidad de escenas.</                    </div>
+                    <div class="feature-card">
+                        <h4>🎨 Render con Efectos Profesionales</h4>
+                        <p>Grade (contraste/saturación/brillo), efectos (sharpen, vignette, grain, glow, RGB split), transiciones (cut, crossfade, flash), burn-in de subtítulos con libass.</                    </div>
+                    <div class="feature-card">
+                        <h4>🎤 Sistema de Letras Animadas</h4>
+                        <p>Editor visual con drag-and-drop, importación SRT/LRC/texto plano, transcripción Whisper (faster-whisper), animaciones de entrada/salida, preview en tiempo real.</                    </div>
+                    <div class="feature-card">
+                        <h4>⚡ Pipeline Asíncrono Robusto</h4>
+                        <p>Jobs asíncronos con progreso real (FFmpeg progress), cancelación segura, reintentos, validación automática con ffprobe (duración, resolución, fps, codecs, sync A/V, keyframes, perfil H.264).</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="architecture">
+                <h2>Arquitectura del Sistema</h2>
+                <p>Lumen Studio sigue una arquitectura <strong>cliente-servidor local</strong> con separación clara entre frontend (React + TypeScript) y backend (FastAPI + Python).</p>
+
+                <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (React + TS)                     │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │
+│  │ Setup   │ │Customize│ │Generating│ │ Results │ │ Editor  │  │
+│  │ Screen  │ │ Screen  │ │ Screen  │ │ Screen  │ │ Screen  │  │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘  │
+└───────┼───────────┼───────────┼───────────┼───────────┼───────┘
+        │           │           │           │           │
+        ▼           ▼           ▼           ▼           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    BACKEND (FastAPI + Python)                    │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────┐ │
+│  │  API     │ │  Jobs    │ │ Analysis │ │ Editing  │ │ Media │ │
+│  │  Routes  │ │  Manager │ │ Pipeline │ │ Generator│ │ Render│ │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘ └────┬───┘ │
+└───────┼───────────┼───────────┼───────────┼───────────┼───────┘
+        │           │           │           │           │
+        ▼           ▼           ▼           ▼           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     STORAGE (Filesystem Local)                    │
+│  projects/<id>/                                                  │
+│  ├── project.json          # Metadatos del proyecto              │
+│  ├── source/               # Audio/video originales              │
+│  ├── analysis/             # audio_analysis.json, scene_library │
+│  ├── master/               # Video normalizado (master)          │
+│  ├── edits/                # EDLs (un JSON por clip)            │
+│  ├── renders/              # MP4s generados + thumbnails        │
+│  ├── lyrics/               # Subtítulos ASS + metadatos         │
+│  ├── thumbs/               # Miniaturas                         │
+│  └── tmp/                  # Archivos temporales de trabajo      │
+└─────────────────────────────────────────────────────────────────┘
+                </div>
+
+                <h3>Decisiones Arquitectónicas Clave</h3>
+                <table>
+                    <thead>
+                        <tr><th>Decisión</th><th>Razón</th><th>Alternativa Descartada</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Local-first, sin DB</td><td>Simplicidad, portabilidad, cero configuración</td><td>PostgreSQL/SQLite (complejidad innecesaria)</td></tr>
+                        <tr><td>FastAPI + React</td><td>Type safety end-to-end, OpenAPI automático, DX excelente</td><td>Flask/Django + vanilla JS (menos type safety)</td></tr>
+                        <tr><td>FFmpeg como subprocess</td><td>Control total, streaming progress, máximo rendimiento</td><td>Python bindings (pyav) - menos control, más bugs</td></tr>
+                        <tr><td>Job queue en memoria</td><td>Simplicidad, suficiente para carga local</td><td>Redis/Celery (overkill para uso local)</td></tr>
+                        <tr><td>FFmpeg progress parsing</td><td>Progreso real, no simulado</td><td>Estimaciones heurísticas (poco fiables)</td></tr>
+                        <tr><td>Validación ffprobe post-render</td><td>Garantía de calidad objetiva</td><td>Confianza ciega en FFmpeg (puede fallar silenciosamente)</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="features">
+                <h2>Funcionalidades Principales</h2>
+
+                <h3>🎵 Análisis Musical (<code>app/analysis/audio_analyzer.py</code>)</h3>
+                <p>Basado en <strong>librosa</strong> con fallback robusto. Todo calculado offline, sin APIs externas.</                <ul>
+                    <li><strong>BPM & Tempo:</strong> <code>librosa.beat.beat_track</code> → BPM, confidence, med/MAD de intervalos. Fallback a grid honesto si falla.</                    <li><strong>Beats & Downbeats:</strong> Ventanas de 5 frames alrededor de cada beat → strength vectorial normalizada (percentil 99) → downbeats por fase 4/4 que maximiza suma de acentos. Confianza de downbeat = separación entre mejor/segunda fase × soporte (mín 8 beats).</li>
+                    <li><strong>Envolventes Espectrales:</strong> STFT → 4 bandas (kick/bass/snare/hat) + RMS + spectral flux. Normalización percentil 98.</li>
+                    <li><strong>Secciones:</strong> Agglomerative clustering espectral (2-9 segmentos) → labels heurísticos (intro/verse/chorus/drop/build/breakdown/outro) por intensidad/flux.</li>
+                    <li><strong>Eventos Musicales:</strong> energy_up/down, drop, section_change, silence, strong_beat, kick - todos anclados a tiempo real con strength.</                </ul>
+
+                <h3>🎬 Análisis Visual (<code>app/analysis/video_analyzer.py</code>)</h3>
+                <p>Basado en <strong>PySceneDetect (ContentDetector)</strong> + OpenCV para métricas por escena.</                <ul>
+                    <li><strong>Detección de Escenas:</strong> ContentDetector threshold adaptativo → lista de escenas con start/end frame/time.</li>
+                    <li><strong>Métricas por Escena:</strong> Motion (optical flow Farneback), Quality (sharpness Laplaciano), Brightness, Stability, Colorfulness, Saliency center, Tags (static/motion/high_quality/low_quality).</li>
+                    <li><strong>Master Normalizado:</strong> Un solo archivo master por proyecto (scale/crop/fps/format fijos). Cacheado por hash de fuente + params. Reutilizable para todos los clips.</                    <li><strong>Thumbnail:</strong> Frame representativo (35% duración) escalado a 720px ancho.</li>
+                </ul>
+
+                <h3>✂️ Planificación EDL (<code>app/editing/planner.py</code> + <code>generator.py</code>)</h3>
+                <p>El planificador es el cerebro creativo: convierte beats + escenas + estilo → EDL (Edit Decision List) ejecutable.</                <ul>
+                    <li><strong>Grid de Cortes:</strong> Beats + mid-beats + section boundaries + event times → candidatos válidos.</li>
+                    <li><strong>Duración Objetivo por Estilo:</strong> Cada estilo define <code>beat_min/beat_max</code>, <code>min_shot/max_shot</code>, <code>transition</code> (cut/crossfade/flash).</li>
+                    <li><strong>Scoring Multi-criterio:</strong> Fit (duración vs objetivo), Beat alignment (distancia a beat/downbeat), Event bonus, Section bonus, Phrase bonus (cada 8 beats), Scene quality, Motion match, Diversity (penaliza reuso), Jitter aleatorio.</                    <li><strong>Selección de Escena:</strong> Weighted random con pesos configurables (scene/quality/motion/diversity/energy) + bias a inicio de escena configurable.</li>
+                    <li><strong>Validación EDL:</strong> Duración suma = EDL duration, source_duration ≥ duration, bounds check (scene bounds + master duration), unique segment IDs, min duration 0.12s.</                    <li><strong>Diversidad:</strong> <code>used_counts</code> penaliza reuso de escenas. <code>version_index</code> + seed determinista → variaciones controladas.</                </ul>
+
+                <h3>🎨 Render Pipeline (<code>app/media/render.py</code>)</h3>
+                <p>Un solo comando FFmpeg por clip. Construye filter graph complejo → un solo proceso FFmpeg → máximo rendimiento.</                <ul>
+                    <li><strong>Inputs:</strong> Un <code>-i master</code> por segmento (con <code>-ss</code>/<code>-t</code> para seek rápido) + 1 <code>-i audio</code>.</li>
+                    <li><strong>Filters por Segmento:</strong> <code>trim</code> exacto (duration del segmento, no source_duration), <code>setpts</code>, <code>fps</code>, <code>scale</code> (lanczos), <code>setsar=1</code>, <code>settb=AVTB</code>. Flash: fade in/out white en transiciones.</li>
+                    <li><strong>Concat vs Xfade:</strong> <code>concat</code> para cuts (inputs trimeados exactos). <code>xfade=fade</code> para crossfade con offset calculado. Flash: fade white en cortes.</li>
+                    <li><strong>Duración Exacta:</strong> <code>tpad=stop_mode=clone:stop_duration=1</code> + <code>trim=duration=EDL_duration</code> → garantía frame-perfect.</                    <li><strong>Efectos (filter chain):</strong> <code>eq</code> (grade), <code>unsharp</code> (sharpen), <code>vignette</code>, <code>noise</code> (grain), <code>gblur+blend=screen</code> (glow), <code>rgbashift</code> (RGB split). Solo si permitidos por estilo.</li>
+                    <li><strong>Subtítulos:</strong> libass → <code>ass_filter()</code> → quemado en video.</li>
+                    <li><strong>Audio:</strong> <code>atrim</code> + <code>asetpts</code> + <code>volume</code> + <code>loudnorm=I=-14:TP=-1.5:LRA=11</code> (estándar streaming).</li>
+                    <li><strong>Encoding:</strong> H.264 High Profile (libx264 / h264_qsv), CRF configurable, <code>-movflags +faststart</code>, <code>-shortest</code> para sync garantizado.</                    <li><strong>Validación Post-Render:</strong> ffprobe completo → duration ±1 frame, resolution, fps, codecs, has_audio/has_video, size > 20KB, full decode test (<code>-f null -</code>), A/V sync (PTS drift), keyframe interval, H.264 profile/level, color space.</li>
+                </ul>
+
+                <h3>🎤 Sistema de Letras (<code>app/lyrics/</code>)</h3>
+                <ul>
+                    <li><strong>Editor Visual:</strong> Tabla virtualizada (react-window), drag-to-reorder (react-dnd), inline editing, per-line preview/play.</                    <li><strong>Importación:</strong> SRT (timecodes), LRC (synced), Texto plano (duración fija). Preview live de líneas parseadas.</li>
+                    <li><strong>Transcripción:</strong> faster-whisper (modelo small/medium/large) → segmentos con timestamps → líneas auto-split.</                    <li><strong>Estilos:</strong> 10+ presets, animaciones (fade/slide/scale/pop/karaoke/typewriter/blur/bounce), colores, outline, glow, shadow, background, posición, alineación, uppercase.</                    <li><strong>Render ASS:</strong> <code>libass</code> via <code>ass_filter</code> → sub.títulos quemados en MP4. Karaoke word-by-word con <code>{\k}</code> tags.</li>
+                </ul>
+
+                <h3>⚡ Sistema de Jobs (<code>app/jobs/</code>)</h3>
+                <ul>
+                    <li><strong>Estados:</strong> queued → running → cancelling → done/error/cancelled (terminal). Transiciones válidas estrictas.</                    <li><strong>Cancelación Segura:</strong> <code>asyncio.Event</code> por job. Runner chequea <code>cancel_event.is_set()</code> en puntos clave. Cancelación → runner limpia → marca <code>cancelled</code>. No puede ser sobrescrito por <code>done</code>.</li>
+                    <li><strong>Progreso Real:</strong> FFmpeg <code>-progress pipe:1</code> → parsing <code>out_time_ms</code> → callback async. SSE para frontend.</li>
+                    <li><strong>Limpieza:</strong> Pruning automático (máx 60 jobs, retiene 50 más recientes).</li>
+                    <li><strong>Reintentos:</strong> QSV fallback a CPU si falla hardware encoder.</li>
+                </ul>
+            </section>
+
+            <section id="pipeline">
+                <h2>Pipeline de Render Completo</h2>
+
+                <div class="architecture-diagram">
+PASO 1: SETUP
+  Usuario sube audio + video → Configura fragmento (start/end) → Pulsa "Analizar"
+
+PASO 2: ANÁLISIS (Paralelo)
+  AUDIO: librosa → beats, downbeats, secciones, events, envolventes
+  VIDEO:  PySceneDetect → escenas + métricas (motion, quality, etc.)
+           → Master normalizado (scale/crop/fps/format fijo, cacheado)
+
+PASO 3: PLANIFICACIÓN
+     Para cada estilo solicitado:
+       → Grid de cortes candidatos (beats + midpoints + secciones + events)
+       → Para cada estilo: scoring multi-criterio → selección de escenas
+       → EDL con segmentos (timeline, source, scene, transition, efectos)
+       → Validación EDL (duración, bounds, IDs únicos, min duration)
+
+PASO 4: RENDER (Paralelo, máx N paralelo)
+     Para cada EDL:
+       → Render preview (media resolución, ultrafast) → validación
+       → Render final (resolución completa, preset configurado) → validación
+       → Validación ffprobe completa (duración, sync, codecs, keyframes, profile)
+
+PASO 5: ENTREGA
+     → MP4s listos para descarga individual o ZIP
+     → MP4s validados, normalizados a −14 LUFS, H.264 High Profile
+                </div>
+
+                <h3>Formatos de Salida Soportados</h3>
+                <table>
+                    <thead>
+                        <tr><th>Parámetro</th><th>Opciones</th><th>Defecto</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Formato</td><td>9:16 (vertical), 1:1 (square), 16:9 (horizontal), 4:5 (reels)</td><td>9:16</td></tr>
+                        <tr><td>Resolución</td><td>720p, 1080p, 1440p</td><td>1080p</td></tr>
+                        <tr><td>FPS</td><td>24, 25, 30, 60</td><td>30</td></tr>
+                        <tr><td>Calidad</td><td>fast (CRF 28), balanced (CRF 20), high (CRF 18)</td><td>balanced</td></tr>
+                        <tr><td>Encoder</td><td>CPU (libx264), QSV (h264_qsv)</td><td>CPU</td></tr>
+                        <tr><td>Codec Video</td><td>H.264 High Profile, yuv420p</td><td>-</td></tr>
+                        <tr><td>Codec Audio</td><td>AAC 128k-224k, 48kHz, -14 LUFS</td><td>-</td></tr>
+                        <tr><td>Contenedor</td><td>MP4 (mov,mp4,m4a,3gp,3g2,mj2)</td><td>-</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="editor">
+                <h2>Editor Visual (<code>frontend/src/components/editor/</code>)</h2>
+                <p>El editor es una SPA React con 5 componentes modulares:</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📋 EditorHeader</h4>
+                        <p>Título, duración, botones undo/redo/guardar/preview/render, selector de estilo, badges de estado (dirty, stale render).</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🎬 EditorPreview</h4>
+                        <p>Player de video (master o render), controles de reproducción, timeline ruler con playhead, stats (segmentos, cortes/s, escenas, resolución), descarga, progreso de render.</                    </div>
+                    <div class="feature-card">
+                        <h4>📊 EditorTimeline</h4>
+                        <p>Drag & drop segmentos (move), resize handles (duration), click-to-select, ruler click-to-seek, keyboard nav (←/→ frame, Shift+←/→ select, Enter split, Del delete, Home/End), playhead sync con video.</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔧 EditorInspector</h4>
+                        <p>Tabs: Timeline (source_start/duration numéricos, move L/R, split, duplicate, delete), Effects (grade sliders + efectos visuales con límites por estilo), Lyrics (editor integrado).</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📱 EditorSidebar</h4>
+                        <p>Botones de render prominentes, config de render (calidad/encoder/resolución), historial (undo/redo count, estado dirty), tips de montaje.</                    </div>
+                </div>
+
+                <h3>Funciones Clave del Editor</h3>
+                <ul>
+                    <li><strong>IDs Estables:</strong> Cada segmento tiene <code>id</code> UUID estable. Selección/movimiento/eliminación por ID, no por índice.</                    <li><strong>Duración Derivada (Ripple):</strong> Duración EDL = suma de segmentos. Acortar último segmento acorta EDL. Límite de crecimiento = duración del fragmento de audio.</li>
+                    <li><strong>Guardado Seguro:</strong> Secuencia atómica (seq counter) evita race conditions. <code>beforeunload</code> avisa si hay cambios sin guardar. Badge "render desactualizado" si <code>edited_at > render.created_at</code>.</li>
+                    <li><strong>Keyboard-First:</strong> Tab navigation, Enter/Delete/Space shortcuts, focus visible, skip links, ARIA labels completos.</                    <li><strong>Render Preview vs Final:</strong> Preview = media resolución + ultrafast. Final = resolución completa + preset configurado. Ambos usan MISMO EDL guardado.</li>
+                </ul>
+            </section>
+
+            <section id="audio">
+                <h2>Análisis de Audio - Detalle Técnico</h2>
+
+                <h3>Pipeline librosa</h3>
+                <pre><code>y, sr = librosa.load(mono_path, sr=22050, mono=True)
+onset_env = librosa.onset.onset_strength(y=y, sr=sr, hop_length=512)
+tempo, beats = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr, hop_length=512, units='time')
+onsets = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr, hop_length=512, units='time')
+rms = librosa.feature.rms(y=y, hop_length=512)[0]
+stft = np.abs(librosa.stft(y, n_fft=2048, hop_length=512))
+# Bandas: kick(40-120), bass(60-250), snare(200-4000), hat(6000-11000)
+band_energy = {band: mean(stft[mask]) for band, (low, high) in BANDS.items()}
+flux = sqrt(sum(diff(stft, axis=1)**2, axis=0))</code></pre>
+
+                <h3>Normalización de Strength (Fix Crítico)</h3>
+                <div class="warning-box">
+                    <strong>Bug Original:</strong> Normalizaba cada beat individualmente → <code>strength = clamp(_norm([strength]), 0, 1)[0]</code> → siempre 1.0 → downbeats falsos, jerarquía aplastada.
+                </div>
+                <div class="success-box">
+                    <strong>Fix:</strong> Normalización vectorial UNA vez: <code>strengths = _norm(np.array(raw_strengths), 99.0)</code>. Preserva jerarquía → downbeats reales detectables.
+                </div>
+
+                <h3>Downbeat Confidence</h3>
+                <p>Algoritmo: 4 fases (0-3) → suma strength por fase → mejor fase = downbeats. Confidence = <code>(best - second) / best * min(1, n_beats/8)</code>. Si pocos beats o fases empatadas → confidence baja.</p>
+
+                <h3>Contrato de Salida (JSON)</h3>
+                <pre><code>{
+  "schema_version": 1,
+  "duration": 120.456,
+  "tempo": {"bpm": 124.5, "confidence": 0.92, "meter": 4, "downbeat_confidence": 0.87},
+  "beats": [
+    {"t": 0.482, "index": 0, "is_downbeat": true, "strength": 0.92, "bands": {"kick": 0.85, "bass": 0.72, "snare": 0.15, "hat": 0.08}},
+    {"t": 0.964, "index": 1, "is_downbeat": false, "strength": 0.67, "bands": {...}}
+  ],
+  "onsets": [0.12, 0.48, 0.96, ...],
+  "energy": {"hop": 512, "sample_rate": 22050, "times": [...], "rms": [...], "flux": [...], "band_kick": [...], ...},
+  "sections": [
+    {"start": 0.0, "end": 15.2, "label": "intro", "intensity": 0.23, "confidence": 0.75, "flux": 0.12, "kick": 0.15}
+  ],
+  "events": [
+    {"t": 15.2, "type": "energy_up", "strength": 0.84},
+    {"t": 30.5, "type": "drop", "strength": 0.91}
+  ],
+  "analysis_engine": {"beats": "librosa.beat_track", "sections": "spectral_agglomerative_v1", "fallback": false}
+}</code></pre>
+            </section>
+
+            <section id="video">
+                <h2>Análisis de Video - Detalle Técnico</h2>
+
+                <h3>Pipeline PySceneDetect</h3>
+                <pre><code>from scenedetect import VideoManager, SceneManager, ContentDetector
+video = VideoManager([video_path])
+scene_manager = SceneManager()
+scene_manager.add_detector(ContentDetector(threshold=27.0))
+video.set_downscale_factor(4)  # 4x más rápido
+scene_manager.detect_scenes(video, show_progress=True)
+scenes = scene_manager.get_scene_list(start_in_scene=False)</code></pre>
+
+                <h3>Métricas por Escena (OpenCV)</h3>
+                <table>
+                    <thead>
+                        <tr><th>Métrica</th><th>Método</th><th>Rango</th><th>Uso</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Motion</td><td>Optical Flow Farneback (promedio magnitude)</td><td>0-1</td><td>Match con energía musical</td></tr>
+                        <tr><td>Quality</td><td>Laplacian variance (sharpness)</td><td>0-1</td><td>Evitar frames borrosos</td></tr>
+                        <tr><td>Brightness</td><td>Mean Y (luminancia)</td><td>0-1</td><td>Match con intensidad musical</td></tr>
+                        <tr><td>Sharpness</td><td>Laplacian variance (frame center)</td><td>0-1</td><td>Nitidez perceptual</td></tr>
+                        <tr><td>Stability</td><td>1 - std(motion) / mean(motion)</td><td>0-1</td><td>Preferir planos estables</td></tr>
+                        <tr><td>Colorfulness</td><td>Hasler & Süsstrunk metric</td><td>0-1</td><td>Estética visual</td></tr>
+                        <tr><td>Saliency Center</td><td>Centro de masa del saliency map</td><td>[0,1]x[0,1]</td><td>Framing/composición</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Tags Automáticos</h3>
+                <ul>
+                    <li><code>static</code>: motion < 0.15</li>
+                    <li><code>motion</code>: motion > 0.4</li>
+                    <li><code>high_quality</code>: quality > 0.7</li>
+                    <li><code>low_quality</code>: quality < 0.3</li>
+                    <li><code>high_motion</code>: motion > 0.6</li>
+                    <li><code>stable</code>: stability > 0.8</li>
+                    <li><code>bright</code>: brightness > 0.7</li>
+                    <li><code>dark</code>: brightness < 0.3</li>
+                </ul>
+
+                <h3>Master Normalizado</h3>
+                <p>Un solo archivo master por proyecto. Cache key = hash(source + fmt + resolution + fps). Reutilizable para todos los clips del proyecto. Formato: <code>master_{width}x{height}_{fps}.mp4</code> (ej: <code>master_404x720_30.mp4</code> para 9:16 720p 30fps).</p>
+            </section>
+
+            <section id="lyrics">
+                <h2>Sistema de Letras - Detalle Técnico</h2>
+
+                <h3>Formatos de Importación</h3>
+                <table>
+                    <thead>
+                        <tr><th>Formato</th><th>Parser</th><th>Ejemplo</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>SRT</td><td>Bloques numerados + timecode <code>HH:MM:SS,mmm --> HH:MM:SS,mmm</code></td><td><code>1\n00:00:00,000 --> 00:00:03,500\nHola mundo</code></td></tr>
+                        <tr><td>LRC</td><td>Líneas <code>[mm:ss.xx]texto</code> o <code>[mm:ss.xx]</code></td><td><code>[00:00.00]Hola mundo</code></td></tr>
+                        <tr><td>Texto Plano</td><td>Una línea = una línea, duración = 3s por defecto</td><td><code>Línea 1\nLínea 2\nLínea 3</code></td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Transcripción Whisper</h3>
+                <p>Integración con <strong>faster-whisper</strong> (CTranslate2). Modelos: <code>tiny, base, small, medium, large-v3</code>. Output → segmentos con timestamps → líneas auto-split por pausa > 0.5s o longitud > 40 chars.</p>
+
+                <h3>Formato ASS (libass)</h3>
+                <p>Karaoke word-by-word con tags <code>{\k<dur>}</code>:</p>
+                <pre><code>{\kf50}Ho{\kf30}la {\kf40}mun{\kf20}do</code></pre>
+                <p>Animaciones soportadas: fade, slide_up/down, scale, pop, word_by_word, karaoke, typewriter, blur, bounce, smooth_reveal.</                <p>Estilo completo serializable en JSON (fuente, size, colors, outline, glow, shadow, animaciones, position, align, background, uppercase, spacing, opacity, karaoke timing).</p>
+
+                <h3>Editor de Líneas (Virtualizado)</h3>
+                <ul>
+                    <li><strong>react-window</strong> FixedSizeList (48px/row) → 1000+ líneas fluidas.</                    <li><strong>Drag-to-reorder:</strong> HTML5 Drag & Drop API + GripVertical handle. <code>onDragStart/Over/Leave/Drop</code> → <code>moveLine(fromIndex, toIndex)</code> → reordenación instantánea.</li>
+                    <li><strong>Validación Inline:</strong> Rojo si <code>end <= start + 0.05</code> o <code>start < 0</code> o <code>end > duration</code>.</li>
+                    <li><strong>Per-line Preview:</strong> Botón Play ▶ busca video a <code>line.start</code>.</li>
+                    <li><strong>Import Preview:</strong> Live preview de líneas parseadas con validadas/inválidas coloreadas.</                </ul>
+            </section>
+
+            <section id="jobs">
+                <h2>Sistema de Jobs - Detalle Técnico</h2>
+
+                <h3>Máquina de Estados</h3>
+                <pre><code>TERMINAL = {"done", "error", "cancelled"}
+
+# Transiciones válidas:
+queued    → running
+running   → cancelling (si cancel requested)
+cancelling → cancelled (runner confirma)
+running   → done (éxito)
+running   → error (fallo)
+cancelling → NO puede ir a running/queued/done
+cancelled → TERMINAL (inmutable)</code></pre>
+
+                <h3>Cancelación Segura</h3>
+                <pre><code>async def cancel(job_id):
+    job = await store.get(job_id)
+    job["cancel_requested"] = True
+    if job["status"] in TERMINAL: return job
+    job["status"] = "cancelling"
+    event = events[job_id]
+    event.set()  # Notifica al runner
+    return job
+
+# En runner:
+cancel_event = await jobs.event(job_id)
+async def on_progress(value):
+    if cancel_event.is_set():
+        raise ProcessingError("Cancelado", code="cancelled")
+    await jobs.update(job_id, progress=value)</code></pre>
+
+                <h3>Progreso Real (FFmpeg)</h3>
+                <pre><code>async def run_ffmpeg(args, duration, on_progress, cancel_event):
+    proc = await asyncio.create_subprocess_exec(
+        FFMPEG, *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    while True:
+        line = await proc.stderr.readline()
+        if not line: break
+        line = line.decode().strip()
+        if line.startswith("out_time_ms="):
+            ms = int(line.split("=")[1])
+            progress = min(1.0, ms / 1000 / duration)
+            await on_progress(progress)
+        if cancel_event.is_set():
+            proc.kill()
+            raise ProcessingError("Cancelado", code="cancelled")</code></pre>
+
+                <h3>SSE para Frontend</h3>
+                <pre><code>async def stream(job_id):
+    last = None
+    while True:
+        job = await jobs.get(job_id)
+        payload = json.dumps(job)
+        if payload != last:
+            yield f"event: update\ndata: {payload}\n\n"
+            last = payload
+        if job["status"] in TERMINAL:
+            yield f"event: end\ndata: {payload}\n\n"
+            break
+        await asyncio.sleep(0.5)</code></pre>
+            </section>
+
+            <section id="validation">
+                <h2>Validación de Calidad - Detalle Técnico</h2>
+
+                <h3>Checks de Validación (<code>app/quality/validator.py</code>)</h3>
+                <table>
+                    <thead>
+                        <tr><th>Check</th><th>Descripción</th><th>Nivel</th><th>Umbral</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Duración</td><td>ffprobe duration vs EDL duration</td><td>Warning</td><td>±1 frame (±1/fps)</td></tr>
+                        <tr><td>Frame Count</td><td>frames = round(duration * fps)</td><td>Warning</td><td>±2 frames</td></tr>
+                        <tr><td>Resolución</td><td>width × height vs esperado</td><td>Warning</td><td>Exacto</td></tr>
+                        <tr><td>Audio Track</td><td>has_audio = True</td><td>Error</td><td>Obligatorio</td></tr>
+                        <tr><td>Video Track</td><td>has_video = True</td><td>Error</td><td>Obligatorio</td></tr>
+                        <tr><td>File Size</td><td>size > 20KB</td><td>Error</td><td>Sospechoso si menor</td></tr>
+                        <tr><td>Decode Integrity</td><td>ffmpeg -v error -i file -f null -</td><td>Warning</td><td>0 errors</td></tr>
+                        <tr><td>A/V Sync</td><td>|video.start_pts - audio.start_pts|</td><td>Warning</td><td>< 50ms</td></tr>
+                        <tr><td>Keyframe Interval</td><td>max interval between keyframes</td><td>Warning</td><td>< 5s</td></tr>
+                        <tr><td>H.264 Profile</td><td>profile == High</td><td>Warning</td><td>High</td></tr>
+                        <tr><td>H.264 Level</td><td>level >= 4.0 (40)</td><td>Warning</td><td>>= 4.0</td></tr>
+                        <tr><td>Color Space</td><td>bt709 / bt470bg / smpte170m</td><td>Warning</td><td>Estándar</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Contrato de Validación</h3>
+                <pre><code>{
+  "ok": true,
+  "issues": [
+    {"level": "warning", "message": "Duración 10.02s vs 10.00s esperados."},
+    {"level": "error", "message": "El MP4 no tiene pista de audio."}
+  ],
+  "info": {
+    "path": "...",
+    "duration": 10.02,
+    "size": 1234567,
+    "width": 1080, "height": 1920, "fps": 30.0,
+    "video_codec": "h264", "audio_codec": "aac",
+    "sample_rate": 48000, "channels": 2,
+    "has_video": true, "has_audio": true,
+    "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
+  }
+}</code></pre>
+            </section>
+
+            <section id="tech">
+                <h2>Stack Tecnológico</h2>
+
+                <div class="tech-stack">
+                    <span class="tech-badge">Python 3.12+</span>
+                    <span class="tech-badge">FastAPI 0.100+</span>
+                    <span class="tech-badge">React 18 + TypeScript 5</span>
+                    <span class="tech-badge">Vite 6</span>
+                    <span class="tech-badge">Tailwind CSS 3.4</span>
+                    <span class="tech-badge">Zustand (state)</span>
+                    <span class="tech-badge">FFmpeg 9.x</span>
+                    <span class="tech-badge">librosa</span>
+                    <span class="tech-badge">PySceneDetect</span>
+                    <span class="tech-badge">OpenCV</span>
+                    <span class="tech-badge">libass</span>
+                    <span class="tech-badge">faster-whisper</span>
+                    <span class="tech-badge">Zod (validation)</span>
+                    <span class="tech-badge">React Window (virtualization)</span>
+                    <span class="tech-badge">react-window</span>
+                    <span class="tech-badge">Ruff + MyPy</span>
+                    <span class="tech-badge">Pytest + unittest</span>
+                </div>
+
+                <h3>Dependencias Críticas</h3>
+                <table>
+                    <thead>
+                        <tr><th>Paquete</th><th>Versión</th><th>Propósito</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>fastapi</td><td>0.100+</td><td>API REST + OpenAPI + SSE</td></tr>
+                        <tr><td>uvicorn</td><td>0.24+</td><td>ASGI server</td></tr>
+                        <tr><td>pydantic</td><td>2.7+</td><td>Validación + serialización</td></tr>
+                        <tr><td>librosa</td><td>1.0+</td><td>Análisis audio (beats, STFT, onset)</td></tr>
+                        <tr><td>scenedetect</td><td>0.7+</td><td>Detección escenas (ContentDetector)</td></tr>
+                        <tr><td>opencv-contrib-python-headless</td><td>4.10+</td><td>Métricas video (optical flow, Laplacian)</td></tr>
+                        <tr><td>librosa</td><td>1.0+</td><td>Análisis audio (beats, STFT, onset)</td></tr>
+                        <tr><td>faster-whisper</td><td>1.1+</td><td>Transcripción local (CTranslate2)</td></tr>
+                        <tr><td>libass / pysubs2</td><td>0.16+ / 1.4+</td><td>Subtítulos ASS + karaoke</td></tr>
+                        <tr><td>ffmpeg-python / subprocess</td><td>9.x</td><td>Render + probe (subprocess nativo)</td></tr>
+                        <tr><td>pydub / soundfile</td><td>0.25+ / 0.12+</td><td>I/O audio</td></tr>
+                        <tr><td>numpy / scipy</td><td>2.0+ / 1.13+</td><td>DSP numérico</td></tr>
+                        <tr><td>zod</td><td>3.23+</td><td>Validación frontend</td></tr>
+                        <tr><td>react / react-dom</td><td>18.3+</td><td>UI framework</td></tr>
+                        <tr><td>zustand</td><td>4.5+</td><td>State management simple</td></tr>
+                        <tr><td>react-window</td><td>1.8+</td><td>Virtualización listas (lyrics, projects)</td></tr>
+                        <tr><td>react-virtualized-auto-sizer</td><td>1.0+</td><td>Auto-size para react-window</td></tr>
+                        <tr><td>lucide-react</td><td>0.46+</td><td>Iconos consistentes</td></tr>
+                        <tr><td>tailwindcss</td><td>3.4+</td><td>Utility-first CSS</td></tr>
+                        <tr><td>esbuild / vite</td><td>6.0+</td><td>Bundler ultra-rápido</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Configuración de Calidad</h3>
+                <table>
+                    <thead>
+                        <tr><th>Preset</th><th>Preset FFmpeg</th><th>CRF</th><th>Audio Bitrate</th><th>Uso</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>fast</td><td>ultrafast</td><td>28</td><td>128k</td><td>Preview, iteración rápida</td></tr>
+                        <tr><td>balanced</td><td>veryfast</td><td>20</td><td>192k</td><td>Producción estándar</td></tr>
+                        <tr><td>high</td><td>medium</td><td>18</td><td>224k</td><td>Entrega final, máxima calidad</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="testing">
+                <h2>Testing - Estrategia y Cobertura</h2>
+
+                <h3>Pirámide de Tests</h3>
+                <table>
+                    <thead>
+                        <tr><th>Nivel</th><th>Herramienta</th><th>Cobertura</th><th>Comando</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Unit (Backend)</td><td>unittest + pytest</td><td>Core logic: planner, validator, audio, jobs, lyrics</td><td><code>.venv\Scripts\python.exe -m pytest tests/ -v</code></td></tr>
+                        <tr><td>Unit (Frontend)</td><td>Node test runner (esbuild)</td><td>Edit helpers: move, split, duplicate, remove, ripple, time mapping</td><td><code>npm test</code></td></tr>
+                        <tr><td>Integration</td><td>pytest</td><td>Full pipeline: audio→video→plan→render→validate</td><td><code>pytest tests/test_integration.py -v</code></td></tr>
+                        <tr><td>E2E (Pendiente)</td><td>Playwright</td><td>Flujos críticos: upload→analyze→generate→edit→render→download</td><td><code>npx playwright test</code></td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Cobertura Actual</h3>
+                <div class="success-box">
+                    <strong>✅ Backend:</strong> 20 tests (14 regresión + 6 integración) - 100% pass<br>
+                    <strong>✅ Frontend:</strong> 13 tests (edit helpers) - 100% pass<br>
+                    <strong>✅ Build:</strong> Frontend + Backend compilación limpia
+                </div>
+
+                <h3>Ejecutar Tests</h3>
+                <pre><code># Backend (desde /backend)
+.venv\Scripts\python.exe -m pytest tests/ -v
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+
+# Frontend (desde /frontend)
+npm test          # 13 edit tests
+npm run build     # TypeScript + Vite build
+
+# Todo (desde raíz)
+git push origin main  # CI runs all</code></pre>
+
+                <h3>Test Coverage Targets</h3>
+                <ul>
+                    <li>Backend core modules (planner, validator, audio_analyzer, jobs, lyrics): > 85%</li>
+                    <li>Frontend edit helpers (move, split, duplicate, remove, ripple): 100%</li>
+                    <li>Integration pipeline: critical paths covered</li>
+                </ul>
+            </section>
+
+            <section id="ci">
+                <h2>CI/CD Pipeline - GitHub Actions</h2>
+
+                <h3>Pipeline <code>.github/workflows/ci.yml</code></h3>
+                <div class="architecture-diagram">
+jobs:
+  frontend-lint:      # ESLint + TypeScript check
+  frontend-test:      # npm test (13 edit tests)
+  frontend-build:     # tsc --noEmit + vite build
+  backend-lint:       # ruff check
+  backend-typecheck:  # mypy app/ (ignore missing stubs)
+  backend-test:       # pytest tests/ -v (14 regresión + 6 integración)
+  security-audit:     # npm audit + pip-audit (fail on CVSS >= 7.0)
+  bundle-size:        # vite-bundle-analyzer, budgets: JS < 400KB, CSS < 50KB gzipped
+  render-budget:      # (placeholder) render time < 30s for 30s clip @ 1080p
+  ci-summary:         # Aggregates all job statuses, fails if any fail
+                </div>
+
+                <h3>Dependabot</h3>
+                <pre><code># .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule: { interval: "weekly" }
+    open-pull-requests-limit: 5
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule: { interval: "weekly" }
+    open-pull-requests-limit: 5</code></pre>
+
+                <h3>Quality Gates</h3>
+                <ul>
+                    <li>✅ All lint passes (ruff, eslint)</li>
+                    <li>✅ All type checks pass (mypy, tsc --noEmit)</li>
+                    <li>✅ All tests pass (backend 20, frontend 13)</li>
+                    <li>✅ Build succeeds (frontend dist, backend imports)</li>
+                    <li>✅ Security audit: no CVSS >= 7.0</li>
+                    <li>✅ Bundle size budgets met (JS < 400KB, CSS < 50KB gzipped)</li>
+                </ul>
+            </section>
+
+            <section id="roadmap">
+                <h2>Roadmap - Próximos Pasos</h2>
+
+                <table>
+                    <thead>
+                        <tr><th>Tarea</th><th>Prioridad</th><th>Esfuerzo</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Task 16: Integration Tests</td><td>Alta</td><td>Grande</td><td><span class="status-badge status-done">✅ Done</span></td></tr>
+                        <tr><td>Task 17: Playwright E2E Tests</td><td>Alta</td><td>Grande</td><td><span class="status-badge status-pending">⏳ Pendiente</span></td></tr>
+                        <tr><td>Task 18: GitHub Actions CI</td><td>Alta</td><td>Mediano</td><td><span class="status-badge status-done">✅ Done</span></td></tr>
+                        <tr><td>Task 19: Dependency Audit</td><td>Alta</td><td>Pequeño</td><td><span class="status-badge status-done">✅ Done</span></td></tr>
+                        <tr><td>Task 20: Performance Budgets</td><td>Media</td><td>Pequeño</td><td><span class="status-badge status-done">✅ Done</span></td></tr>
+                        <tr><td>Task 21: Bundle Optimization</td><td>Media</td><td>Mediano</td><td><span class="status-badge status-pending">⏳ Pendiente</span></td></tr>
+                        <tr><td>Task 22: List Virtualization</td><td>Media</td><td>Mediano</td><td><span class="status-badge status-pending">⏳ Pendiente</span></td></tr>
+                        <tr><td>Task 23: Timeline Performance</td><td>Media</td><td>Mediano</td><td><span class="status-badge status-done">✅ Done</span></td></tr>
+                        <tr><td>Task 24: Progressive Images</td><td>Baja</td><td>Pequeño</td><td><span class="status-badge status-pending">⏳ Pendiente</span></td></tr>
+                        <tr><td>Task 25: Visual Polish (Framer Motion)</td><td>Baja</td><td>Mediano</td><td><span class="status-badge status-pending">⏳ Pendiente</span></td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Próximos Hitos</h3>
+                <ol>
+                    <li><strong>Playwright E2E</strong> - Automatizar flujos críticos en CI (upload→analyze→generate→edit→render→download)</li>
+                    <li><strong>Bundle Splitting</strong> - Lazy load screens, tree-shake lucide icons, dynamic imports</li>
+                    <li><strong>Virtualización Listas</strong> - react-window para project list, edit list, render list (100+ items)</li>
+                    <li><strong>Progressive Thumbnails</strong> - LQIP blur-up, lazy load, WebP/AVIF, srcset</li>
+                    <li><strong>Framer Motion Polish</strong> - Page transitions, stagger animations, reduced-motion support</li>
+                </ol>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p><strong>Lumen Studio v0.1.0</strong> — Music Video Studio Local</p>
+            <p>100% Local · Zero Cloud · Zero Cost · Full Privacy</p>
+            <p style="margin-top: 16px;">
+                <a href="https://github.com/Cibervanon/MusicVisualizer" target="_blank">GitHub Repository</a> ·
+                <a href="#overview">Volver al inicio</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('date').textContent = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    </script>
+</body>
+</html>
